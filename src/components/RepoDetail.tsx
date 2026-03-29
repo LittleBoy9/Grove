@@ -265,6 +265,12 @@ export default function RepoDetail({ repo, onRefresh }: Props) {
 
   async function handleGenerateCommitMessage() {
     if (repo.staged.length === 0) return;
+    const s = loadSettings();
+    if (!s.aiProvider || !s.aiKey || !s.aiModel) {
+      setAiError("__unconfigured__");
+      setTimeout(() => setAiError(null), 4000);
+      return;
+    }
     setAiGenerating(true);
     setAiError(null);
     try {
@@ -274,7 +280,7 @@ export default function RepoDetail({ repo, onRefresh }: Props) {
       );
       const combinedDiff = diffs.filter(Boolean).join("\n");
       if (!combinedDiff.trim()) throw new Error("No diff content to generate from");
-      const message = await generateCommitMessage(combinedDiff, loadSettings());
+      const message = await generateCommitMessage(combinedDiff, s);
       if (message) setCommitMessage(message);
     } catch (e) {
       setAiError(String(e));
@@ -666,11 +672,6 @@ export default function RepoDetail({ repo, onRefresh }: Props) {
                       )}
                       {aiGenerating ? "Generating…" : "AI message"}
                     </button>
-                    {aiError && (
-                      <span className="text-[10px] text-red-400 truncate flex-1" title={aiError}>
-                        {aiError.length > 40 ? aiError.slice(0, 40) + "…" : aiError}
-                      </span>
-                    )}
                     <label className="flex items-center gap-1.5 text-[11px] text-zinc-500 cursor-pointer ml-auto">
                       <input
                         type="checkbox"
@@ -681,6 +682,17 @@ export default function RepoDetail({ repo, onRefresh }: Props) {
                       Amend last commit
                     </label>
                   </div>
+                  {aiError && (
+                    <div className="mb-1.5">
+                      {aiError === "__unconfigured__" ? (
+                        <span className="text-[10px] text-zinc-500">Set up AI in Settings ⚙︎</span>
+                      ) : (
+                        <span className="text-[10px] text-red-400" title={aiError}>
+                          {aiError.length > 80 ? aiError.slice(0, 80) + "…" : aiError}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <Textarea
                     placeholder={amending ? "Edit commit message…" : "Commit message…"}
                     value={commitMessage}

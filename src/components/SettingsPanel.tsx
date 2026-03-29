@@ -180,14 +180,31 @@ export default function SettingsPanel({ settings, onSave, onClose }: Props) {
                 <div className="mb-3">
                   <label className="block text-xs font-medium text-zinc-400 mb-2">Model</label>
                   <select
-                    value={draft.aiModel}
-                    onChange={(e) => setDraft((d) => ({ ...d, aiModel: e.target.value }))}
+                    value={(AI_MODELS[draft.aiProvider] ?? []).some((m) => m.id === draft.aiModel) ? draft.aiModel : "__custom__"}
+                    onChange={(e) => {
+                      if (e.target.value !== "__custom__") {
+                        setDraft((d) => ({ ...d, aiModel: e.target.value }));
+                      } else {
+                        setDraft((d) => ({ ...d, aiModel: "" }));
+                      }
+                    }}
                     className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-zinc-200 outline-none focus:border-white/20"
                   >
                     {(AI_MODELS[draft.aiProvider] ?? []).map((m) => (
                       <option key={m.id} value={m.id}>{m.name}</option>
                     ))}
+                    <option value="__custom__">Custom model ID…</option>
                   </select>
+                  {!(AI_MODELS[draft.aiProvider] ?? []).some((m) => m.id === draft.aiModel) && (
+                    <input
+                      type="text"
+                      value={draft.aiModel}
+                      onChange={(e) => setDraft((d) => ({ ...d, aiModel: e.target.value }))}
+                      placeholder="Enter model ID (e.g. gemini-2.5-pro-exp)"
+                      className="mt-1.5 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-white/20 font-mono"
+                      autoFocus
+                    />
+                  )}
                 </div>
 
                 {/* API Key */}
