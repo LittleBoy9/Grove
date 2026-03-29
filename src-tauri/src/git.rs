@@ -31,6 +31,17 @@ pub struct CommitInfo {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GraphCommitInfo {
+    pub hash: String,
+    pub short_hash: String,
+    pub parents: Vec<String>,
+    pub refs: Vec<String>,
+    pub message: String,
+    pub author: String,
+    pub timestamp: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BranchInfo {
     pub name: String,
     pub is_current: bool,
@@ -428,8 +439,53 @@ pub fn get_log(repo_path: &str, limit: usize) -> Result<Vec<CommitInfo>, String>
     Ok(commits)
 }
 
+pub fn get_log_graph(repo_path: &str, limit: usize) -> Result<Vec<GraphCommitInfo>, String> {
+    let limit_str = format!("-{}", limit);
+    // %P = parent hashes (space-separated), %D = ref decorations (branch/tag names)
+    let output = run_git(
+        repo_path,
+        &["log", "--all", &limit_str, "--format=%H|%h|%P|%D|%s|%an|%ct"],
+    )?;
+
+    let mut commits = Vec::new();
+    for line in output.lines() {
+        if line.is_empty() {
+            continue;
+        }
+        let parts: Vec<&str> = line.splitn(7, '|').collect();
+        if parts.len() != 7 {
+            continue;
+        }
+        let parents: Vec<String> = parts[2]
+            .split_whitespace()
+            .filter(|s| !s.is_empty())
+            .map(String::from)
+            .collect();
+        let refs: Vec<String> = parts[3]
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+        commits.push(GraphCommitInfo {
+            hash: parts[0].to_string(),
+            short_hash: parts[1].to_string(),
+            parents,
+            refs,
+            message: parts[4].to_string(),
+            author: parts[5].to_string(),
+            timestamp: parts[6].trim().parse().unwrap_or(0),
+        });
+    }
+    Ok(commits)
+}
+
 pub fn get_commit_diff(repo_path: &str, hash: &str) -> Result<String, String> {
     run_git(repo_path, &["show", "--stat", "-p", hash])
+}
+
+pub fn get_branch_diff(repo_path: &str, base: &str, compare: &str) -> Result<String, String> {
+    let range = format!("{}...{}", base, compare);
+    run_git(repo_path, &["diff", "--stat", "-p", &range])
 }
 
 pub fn get_file_log(repo_path: &str, file_path: &str, limit: usize) -> Result<Vec<CommitInfo>, String> {
@@ -557,4 +613,22 @@ pub fn read_gitignore(repo_path: &str) -> Result<String, String> {
 pub fn write_gitignore(repo_path: &str, content: &str) -> Result<(), String> {
     let path = Path::new(repo_path).join(".gitignore");
     std::fs::write(&path, content).map_err(|e| e.to_string())
+}
+
+// --- File tree ---
+
+pub fn read_file_tree(repo_path: &str) -> Result<Vec<String>, String> {
+    // Tracked files (respects .gitignore automatically)
+    let tracked = run_git(repo_path, &["ls-files"])?;
+    // Untracked files not covered by .gitignore
+    let untracked = run_git(repo_path, &["ls-files", "--others", "--exclude-standard"])?;
+
+    let mut paths: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    for line in tracked.lines().chain(untracked.lines()) {
+        let l = line.trim();
+        if !l.is_empty() {
+            paths.insert(l.to_string());
+        }
+    }
+    Ok(paths.into_iter().collect())
 }

@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { RepoStatus, BranchInfo, CommitInfo, StashEntry, TagInfo, RemoteInfo } from "./types";
+import { RepoStatus, BranchInfo, CommitInfo, GraphCommitInfo, StashEntry, TagInfo, RemoteInfo } from "./types";
 
 export const api = {
   // Repo discovery
@@ -102,8 +102,12 @@ export const api = {
   // Log / History
   getLog: (repoPath: string, limit: number): Promise<CommitInfo[]> =>
     invoke("get_log", { repoPath, limit }),
+  getLogGraph: (repoPath: string, limit: number): Promise<GraphCommitInfo[]> =>
+    invoke("get_log_graph", { repoPath, limit }),
   getCommitDiff: (repoPath: string, hash: string): Promise<string> =>
     invoke("get_commit_diff", { repoPath, hash }),
+  getBranchDiff: (repoPath: string, base: string, compare: string): Promise<string> =>
+    invoke("get_branch_diff", { repoPath, base, compare }),
   getFileLog: (repoPath: string, filePath: string, limit: number): Promise<CommitInfo[]> =>
     invoke("get_file_log", { repoPath, filePath, limit }),
 
@@ -118,6 +122,8 @@ export const api = {
     invoke("read_gitignore", { repoPath }),
   writeGitignore: (repoPath: string, content: string): Promise<void> =>
     invoke("write_gitignore", { repoPath, content }),
+  readFileTree: (repoPath: string): Promise<string[]> =>
+    invoke("read_file_tree", { repoPath }),
 
   // Launcher
   pickFolder: (): Promise<string | null> =>
@@ -130,4 +136,6 @@ export const api = {
     invoke("open_in_terminal", { terminalId, repoPath }),
   openInFinder: (repoPath: string): Promise<void> =>
     invoke("open_in_finder", { repoPath }),
+  openUrl: (url: string): Promise<void> =>
+    invoke("open_url", { url }),
 };

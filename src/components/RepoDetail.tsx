@@ -13,12 +13,14 @@ import TagsPanel from "./TagsPanel";
 import RemotesPanel from "./RemotesPanel";
 import FileHistory from "./FileHistory";
 import GitignoreEditor from "./GitignoreEditor";
+import FileTreePanel from "./FileTreePanel";
+import BranchCompare from "./BranchCompare";
 import { timeAgo } from "../lib/time";
 import { notify } from "../lib/notify";
 import { generateCommitMessage } from "../lib/ai";
 import { loadSettings } from "../lib/settings";
 
-type Tab = "changes" | "history" | "stash" | "tags" | "remotes";
+type Tab = "changes" | "history" | "compare" | "stash" | "tags" | "remotes" | "tree";
 
 interface Props {
   repo: RepoStatus;
@@ -142,7 +144,17 @@ function ConflictRow({
   );
 }
 
-const VALID_TABS: Tab[] = ["changes", "history", "stash", "tags", "remotes"];
+function remoteToWebUrl(url: string): string | null {
+  url = url.trim();
+  if (url.startsWith("https://") || url.startsWith("http://")) return url.replace(/\.git$/, "");
+  const sshMatch = url.match(/^git@([^:]+):(.+?)(?:\.git)?$/);
+  if (sshMatch) return `https://${sshMatch[1]}/${sshMatch[2]}`;
+  const gitMatch = url.match(/^git:\/\/([^/]+)\/(.+?)(?:\.git)?$/);
+  if (gitMatch) return `https://${gitMatch[1]}/${gitMatch[2]}`;
+  return null;
+}
+
+const VALID_TABS: Tab[] = ["changes", "history", "compare", "stash", "tags", "remotes", "tree"];
 
 function loadTab(repoPath: string): Tab {
   try {
@@ -167,6 +179,7 @@ export default function RepoDetail({ repo, onRefresh }: Props) {
   const [showGitignore, setShowGitignore] = useState(false);
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [prUrl, setPrUrl] = useState<string | null>(null);
   const forcePushRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -197,6 +210,26 @@ export default function RepoDetail({ repo, onRefresh }: Props) {
       localStorage.setItem(`grove_tab_${repo.path}`, tab);
     } catch { /* ignore */ }
   }, [tab, repo.path]);
+
+  // Build PR URL from origin remote + current branch
+  useEffect(() => {
+    setPrUrl(null);
+    const branch = repo.branch;
+    if (!branch || branch === "HEAD") return;
+    api.listRemotes(repo.path).then((remotes) => {
+      const origin = remotes.find((r) => r.name === "origin") ?? remotes[0];
+      if (!origin) return;
+      const webUrl = remoteToWebUrl(origin.url);
+      if (!webUrl) return;
+      if (/github\.com/i.test(webUrl)) {
+        setPrUrl(`${webUrl}/compare/${encodeURIComponent(branch)}?expand=1`);
+      } else if (/gitlab\.com/i.test(webUrl)) {
+        setPrUrl(`${webUrl}/-/merge_requests/new?merge_request%5Bsource_branch%5D=${encodeURIComponent(branch)}`);
+      } else if (/bitbucket\.org/i.test(webUrl)) {
+        setPrUrl(`${webUrl}/pull-requests/new?source=${encodeURIComponent(branch)}`);
+      }
+    }).catch(() => {});
+  }, [repo.path, repo.branch]);
 
   // Keyboard shortcuts: 1-5 to switch tabs; Cmd+Shift+F/L/P for fetch/pull/push
   useEffect(() => {
@@ -481,6 +514,19 @@ export default function RepoDetail({ repo, onRefresh }: Props) {
               onClick={handlePull} disabled={!!loading}>
               {loading === "pull" ? "Pulling…" : "↓ Pull"}
             </Button>
+            {prUrl && (
+              <button
+                onClick={() => api.openUrl(prUrl)}
+                title="Open pull request in browser"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-violet-300 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 hover:border-violet-500/40 rounded-lg transition-all"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="6" cy="6" r="2" /><circle cx="6" cy="18" r="2" /><circle cx="18" cy="12" r="2" />
+                  <path strokeLinecap="round" d="M8 6h3a4 4 0 014 4v2M8 18h3" />
+                </svg>
+                Create PR
+              </button>
+            )}
             <div ref={forcePushRef} className="relative flex items-stretch">
               <Button size="sm" variant="outline"
                 className="text-xs border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300 rounded-r-none border-r-0"
@@ -523,7 +569,7 @@ export default function RepoDetail({ repo, onRefresh }: Props) {
 
         {/* Tabs */}
         <div className="flex gap-1 mt-3">
-          {(["changes", "history", "stash", "tags", "remotes"] as Tab[]).map((t) => (
+          {(["changes", "history", "compare", "stash", "tags", "remotes", "tree"] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -539,7 +585,9 @@ export default function RepoDetail({ repo, onRefresh }: Props) {
                   ? "Tags"
                   : t === "remotes"
                     ? "Remotes"
-                    : t.charAt(0).toUpperCase() + t.slice(1)}
+                    : t === "tree"
+                      ? "Tree"
+                      : t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
         </div>
@@ -742,11 +790,15 @@ export default function RepoDetail({ repo, onRefresh }: Props) {
 
         {tab === "history" && <CommitHistory repoPath={repo.path} onRefresh={onRefresh} />}
 
+        {tab === "compare" && <BranchCompare repoPath={repo.path} currentBranch={repo.branch} />}
+
         {tab === "stash" && <StashPanel repoPath={repo.path} onRefresh={onRefresh} />}
 
         {tab === "tags" && <TagsPanel repoPath={repo.path} />}
 
         {tab === "remotes" && <RemotesPanel repoPath={repo.path} />}
+
+        {tab === "tree" && <FileTreePanel repo={repo} onRefresh={onRefresh} />}
       </div>
 
       {fileHistoryPath && (

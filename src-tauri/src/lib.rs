@@ -153,8 +153,18 @@ async fn get_log(repo_path: String, limit: usize) -> Result<Vec<CommitInfo>, Str
 }
 
 #[tauri::command]
+async fn get_log_graph(repo_path: String, limit: usize) -> Result<Vec<git::GraphCommitInfo>, String> {
+    git::get_log_graph(&repo_path, limit)
+}
+
+#[tauri::command]
 async fn get_commit_diff(repo_path: String, hash: String) -> Result<String, String> {
     git::get_commit_diff(&repo_path, &hash)
+}
+
+#[tauri::command]
+async fn get_branch_diff(repo_path: String, base: String, compare: String) -> Result<String, String> {
+    git::get_branch_diff(&repo_path, &base, &compare)
 }
 
 #[tauri::command]
@@ -273,6 +283,13 @@ async fn write_gitignore(repo_path: String, content: String) -> Result<(), Strin
     git::write_gitignore(&repo_path, &content)
 }
 
+// --- File tree ---
+
+#[tauri::command]
+async fn read_file_tree(repo_path: String) -> Result<Vec<String>, String> {
+    git::read_file_tree(&repo_path)
+}
+
 // --- Misc ---
 
 #[tauri::command]
@@ -302,6 +319,11 @@ async fn open_in_terminal(terminal_id: String, repo_path: String) -> Result<(), 
 #[tauri::command]
 async fn open_in_finder(repo_path: String) -> Result<(), String> {
     launcher::open_in_finder(&repo_path)
+}
+
+#[tauri::command]
+async fn open_url(url: String) -> Result<(), String> {
+    launcher::open_url(&url)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -338,7 +360,9 @@ pub fn run() {
             stash_drop,
             list_stashes,
             get_log,
+            get_log_graph,
             get_commit_diff,
+            get_branch_diff,
             push_force,
             clone_repo,
             get_file_log,
@@ -359,11 +383,13 @@ pub fn run() {
             resolve_conflict_theirs,
             read_gitignore,
             write_gitignore,
+            read_file_tree,
             pick_folder,
             detect_apps,
             open_in_editor,
             open_in_terminal,
             open_in_finder,
+            open_url,
             send_notification,
         ])
         .run(tauri::generate_context!())

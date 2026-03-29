@@ -11,6 +11,16 @@ export interface CommitInfo {
   timestamp: number;
 }
 
+export interface GraphCommitInfo {
+  hash: string;
+  short_hash: string;
+  parents: string[];
+  refs: string[];
+  message: string;
+  author: string;
+  timestamp: number;
+}
+
 export interface RepoStatus {
   path: string;
   name: string;

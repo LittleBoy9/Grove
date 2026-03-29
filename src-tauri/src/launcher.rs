@@ -122,6 +122,14 @@ pub fn open_in_finder(repo_path: &str) -> Result<(), String> {
         .map_err(|e| format!("Failed to open Finder: {}", e))
 }
 
+pub fn open_url(url: &str) -> Result<(), String> {
+    Command::new("open")
+        .arg(url)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| format!("Failed to open URL: {}", e))
+}
+
 pub fn open_in_terminal(terminal_id: &str, repo_path: &str) -> Result<(), String> {
     match terminal_id {
         "warp"      => open_app("Warp", repo_path),

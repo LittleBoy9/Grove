@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { RepoStatus } from "./types";
 import { api } from "./api";
 import RepoCard from "./components/RepoCard";
@@ -139,6 +140,19 @@ function saveGroups(groups: Record<string, string>) {
   localStorage.setItem("grove_groups", JSON.stringify(groups));
 }
 
+function loadFavorites(): Set<string> {
+  try {
+    const raw = localStorage.getItem("grove_favorites");
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveFavorites(favs: Set<string>) {
+  localStorage.setItem("grove_favorites", JSON.stringify([...favs]));
+}
+
 export default function App() {
   const [repoPaths, setRepoPaths] = useState<string[]>(loadSavedRepos);
   const [statuses, setStatuses] = useState<Map<string, RepoStatus>>(new Map());
@@ -162,6 +176,7 @@ export default function App() {
   const [dragOverPath, setDragOverPath] = useState<string | null>(null);
   const [groups, setGroups] = useState<Record<string, string>>(loadGroups);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [favorites, setFavorites] = useState<Set<string>>(loadFavorites);
   const [groupPickerPath, setGroupPickerPath] = useState<string | null>(null);
   const [groupInput, setGroupInput] = useState("");
 
@@ -403,12 +418,24 @@ export default function App() {
   const selectedRepo = selectedPath ? statuses.get(selectedPath) : null;
 
   const sortedPaths = [...repoPaths].sort((a, b) => {
+    const favA = favorites.has(a) ? 0 : 1;
+    const favB = favorites.has(b) ? 0 : 1;
+    if (favA !== favB) return favA - favB;
     const sa = statuses.get(a);
     const sb = statuses.get(b);
     const dirtyA = sa ? sa.staged.length + sa.unstaged.length + sa.untracked.length : 0;
     const dirtyB = sb ? sb.staged.length + sb.unstaged.length + sb.untracked.length : 0;
     return dirtyB - dirtyA;
   });
+
+  function handleToggleFavorite(path: string) {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      next.has(path) ? next.delete(path) : next.add(path);
+      saveFavorites(next);
+      return next;
+    });
+  }
 
   // When customOrder is set, use it; otherwise use dirty-first sort
   const orderedPaths = customOrder
@@ -472,6 +499,8 @@ export default function App() {
         onRemove={(e) => { e.stopPropagation(); handleRemoveRepo(path); }}
         onSetGroup={() => { setGroupPickerPath(path); setGroupInput(groups[path] ?? ""); }}
         groupName={groups[path]}
+        isFavorite={favorites.has(path)}
+        onToggleFavorite={() => handleToggleFavorite(path)}
         draggable={true}
         onDragStart={() => handleDragStart(path)}
         onDragOver={(e) => handleDragOver(path, e)}
@@ -484,6 +513,13 @@ export default function App() {
   return (
     <TooltipProvider>
       <div className="flex h-screen bg-zinc-900 text-white overflow-hidden">
+        {/* Titlebar drag region — enables window drag + double-click to zoom */}
+        <div
+          data-tauri-drag-region
+          onDoubleClick={() => getCurrentWindow().toggleMaximize()}
+          className="fixed inset-x-0 top-0 z-50"
+          style={{ height: "env(titlebar-area-height, 28px)" }}
+        />
         {/* Sidebar */}
         <div
           className="w-72 shrink-0 flex flex-col border-r border-white/8"
