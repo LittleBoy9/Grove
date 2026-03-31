@@ -9,6 +9,7 @@ export interface GroveSettings {
   aiProvider: AIProvider;
   aiModel: string;
   aiKey: string;
+  theme: string;
 }
 
 const DEFAULTS: GroveSettings = {
@@ -20,6 +21,7 @@ const DEFAULTS: GroveSettings = {
   aiProvider: "",
   aiModel: "",
   aiKey: "",
+  theme: "grove",
 };
 
 const KEY = "grove_settings";

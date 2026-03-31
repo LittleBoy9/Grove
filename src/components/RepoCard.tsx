@@ -48,9 +48,12 @@ export default function RepoCard({
       onDrop={onDrop}
       className={`relative group ${isDragOver ? "border-t-2 border-blue-500/60" : ""}`}
     >
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onClick}
-        className={`w-full text-left px-4 py-3 rounded-xl border transition-all duration-150 group/card
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
+        className={`w-full text-left px-4 py-3 rounded-xl border transition-all duration-150 group/card cursor-pointer
           ${selected
             ? "bg-white/10 border-white/20 shadow-lg"
             : "bg-white/5 border-white/5 hover:bg-white/8 hover:border-white/10"
@@ -159,7 +162,7 @@ export default function RepoCard({
         {!isDirty && !repo.last_commit && (
           <span className="text-xs text-zinc-600">Clean</span>
         )}
-      </button>
+      </div>
 
       {/* Group tag button (top-left, only on hover) */}
       {onSetGroup && (

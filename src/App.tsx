@@ -7,6 +7,7 @@ import RepoDetail from "./components/RepoDetail";
 import SettingsPanel from "./components/SettingsPanel";
 import CloneRepo from "./components/CloneRepo";
 import GlobalSearch from "./components/GlobalSearch";
+import TourGuide, { isTourDone } from "./components/TourGuide";
 import { ScrollArea } from "./components/ui/scroll-area";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { loadSettings, saveSettings, GroveSettings } from "./lib/settings";
@@ -179,6 +180,7 @@ export default function App() {
   const [favorites, setFavorites] = useState<Set<string>>(loadFavorites);
   const [groupPickerPath, setGroupPickerPath] = useState<string | null>(null);
   const [groupInput, setGroupInput] = useState("");
+  const [runTour, setRunTour] = useState(() => !isTourDone());
 
   // Validate selectedPath is in repoPaths
   useEffect(() => {
@@ -512,7 +514,7 @@ export default function App() {
 
   return (
     <TooltipProvider>
-      <div className="flex h-screen bg-zinc-900 text-white overflow-hidden">
+      <div data-theme={settings.theme} className="flex h-screen bg-zinc-900 text-white overflow-hidden">
         {/* Titlebar drag region — enables window drag + double-click to zoom */}
         <div
           data-tauri-drag-region
@@ -531,6 +533,7 @@ export default function App() {
               <span className="text-base font-bold text-white tracking-tight">Grove</span>
               {refreshing && <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />}
               <span
+                id="tour-search-cmd"
                 className="text-[10px] text-zinc-700 cursor-pointer hover:text-zinc-500 transition-colors ml-1"
                 onClick={() => setShowSearch(true)}
                 title="Global search (Cmd+K)"
@@ -546,14 +549,14 @@ export default function App() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </button>
-              <button onClick={() => setShowClone(true)}
+              <button id="tour-clone-repo" onClick={() => setShowClone(true)}
                 className="p-1.5 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-colors"
                 title="Clone repository">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 7.5h-.75A2.25 2.25 0 004.5 9.75v7.5a2.25 2.25 0 002.25 2.25h7.5a2.25 2.25 0 002.25-2.25v-7.5a2.25 2.25 0 00-2.25-2.25h-.75m-6 3.75l3 3m0 0l3-3m-3 3V1.5m6 9h.75a2.25 2.25 0 012.25 2.25v7.5a2.25 2.25 0 01-2.25 2.25h-7.5a2.25 2.25 0 01-2.25-2.25v-.75" />
                 </svg>
               </button>
-              <button onClick={handleAddFolder}
+              <button id="tour-add-repo" onClick={handleAddFolder}
                 className="p-1.5 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-colors"
                 title="Add repository or scan folder">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -565,7 +568,7 @@ export default function App() {
 
           {/* Bulk actions */}
           {repoPaths.length > 1 && (
-            <div className="px-3 pb-2 flex gap-1.5">
+            <div id="tour-bulk-actions" className="px-3 pb-2 flex gap-1.5">
               <button
                 onClick={handleFetchAll}
                 disabled={!!bulkLoading}
@@ -615,7 +618,7 @@ export default function App() {
           )}
 
           {/* Repo list */}
-          <ScrollArea className="flex-1 min-h-0 px-3">
+          <ScrollArea id="tour-repo-list" className="flex-1 min-h-0 px-3">
             {sortedPaths.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 gap-3 text-zinc-600">
                 <svg className="w-10 h-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
@@ -707,6 +710,17 @@ export default function App() {
                 </button>
               )}
               <button
+                onClick={() => setRunTour(true)}
+                className="p-1 rounded-md text-zinc-600 hover:text-zinc-400 hover:bg-white/5 transition-colors"
+                title="Take a tour"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-4m0-4h.01" />
+                </svg>
+              </button>
+              <button
+                id="tour-settings"
                 onClick={() => setShowSettings(true)}
                 className="p-1 rounded-md text-zinc-600 hover:text-zinc-400 hover:bg-white/5 transition-colors"
                 title="Settings"
@@ -721,7 +735,7 @@ export default function App() {
         </div>
 
         {/* Main content */}
-        <div className="flex-1 min-w-0 flex flex-col" style={{ paddingTop: "env(titlebar-area-height, 28px)" }}>
+        <div id="tour-main-panel" className="flex-1 min-w-0 flex flex-col" style={{ paddingTop: "env(titlebar-area-height, 28px)" }}>
           {selectedRepo ? (
             <RepoDetail repo={selectedRepo} onRefresh={() => refreshAll()} />
           ) : (
@@ -757,6 +771,8 @@ export default function App() {
           onClose={() => setShowSearch(false)}
         />
       )}
+
+      <TourGuide run={runTour} onFinish={() => setRunTour(false)} />
     </TooltipProvider>
   );
 }
