@@ -1,0 +1,2275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grove | Multi-Repo Git Workspace</title>
+  <meta
+    name="description"
+    content="Grove is a stunning multi-repo Git workspace for macOS with powerful Git actions, fluid navigation, and an immersive desktop workflow."
+  >
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap"
+    rel="stylesheet"
+  >
+  <style>
+    :root {
+      --bg: #07110f;
+      --bg-soft: #0c1916;
+      --panel: rgba(13, 26, 23, 0.72);
+      --panel-strong: rgba(14, 32, 27, 0.92);
+      --line: rgba(184, 255, 223, 0.12);
+      --line-strong: rgba(184, 255, 223, 0.22);
+      --text: #f5fff9;
+      --muted: #9fb7ad;
+      --primary: #8ef0b7;
+      --primary-strong: #5ce79b;
+      --cyan: #77e9ff;
+      --teal: #4bc8b2;
+      --gold: #f4d597;
+      --shadow: 0 30px 120px rgba(0, 0, 0, 0.45);
+      --shadow-soft: 0 18px 60px rgba(0, 0, 0, 0.24);
+      --radius-xl: 30px;
+      --radius-lg: 22px;
+      --radius-md: 16px;
+      --nav-height: 84px;
+      --grid-size: 72px;
+      --pointer-x: 50%;
+      --pointer-y: 50%;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      font-family: "Manrope", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% 20%, rgba(82, 231, 150, 0.18), transparent 28%),
+        radial-gradient(circle at 82% 18%, rgba(83, 226, 255, 0.15), transparent 24%),
+        radial-gradient(circle at 50% 100%, rgba(43, 129, 112, 0.24), transparent 36%),
+        linear-gradient(180deg, #05100d 0%, #071411 22%, #081715 58%, #04100e 100%);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background:
+        linear-gradient(rgba(184, 255, 223, 0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(184, 255, 223, 0.045) 1px, transparent 1px);
+      background-size: var(--grid-size) var(--grid-size);
+      mask-image: radial-gradient(circle at center, black 40%, transparent 90%);
+      pointer-events: none;
+      opacity: 0.38;
+      z-index: -3;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(400px circle at var(--pointer-x) var(--pointer-y), rgba(142, 240, 183, 0.08), transparent 60%);
+      pointer-events: none;
+      z-index: -2;
+      transition: background 0.15s linear;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    canvas#scene {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -4;
+      pointer-events: none;
+      opacity: 0.95;
+    }
+
+    .noise {
+      position: fixed;
+      inset: 0;
+      background-image:
+        radial-gradient(rgba(255, 255, 255, 0.03) 0.7px, transparent 0.7px);
+      background-size: 18px 18px;
+      opacity: 0.18;
+      pointer-events: none;
+      z-index: -1;
+      mix-blend-mode: soft-light;
+    }
+
+    .page-shell {
+      position: relative;
+      isolation: isolate;
+    }
+
+    .container {
+      width: min(1180px, calc(100vw - 40px));
+      margin: 0 auto;
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(36px) scale(0.985);
+      transition:
+        opacity 0.7s ease,
+        transform 0.7s cubic-bezier(.22, 1, .36, 1);
+    }
+
+    .reveal.is-visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 40;
+      height: var(--nav-height);
+      transition:
+        background 0.35s ease,
+        border-color 0.35s ease,
+        backdrop-filter 0.35s ease,
+        transform 0.35s ease;
+    }
+
+    .nav.is-scrolled {
+      background: rgba(3, 11, 9, 0.62);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(184, 255, 223, 0.08);
+    }
+
+    .nav-inner {
+      width: min(1240px, calc(100vw - 28px));
+      height: 100%;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      position: relative;
+      display: grid;
+      place-items: center;
+      background:
+        linear-gradient(145deg, rgba(142, 240, 183, 0.32), rgba(119, 233, 255, 0.18)),
+        rgba(9, 27, 22, 0.88);
+      border: 1px solid rgba(184, 255, 223, 0.18);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        0 10px 28px rgba(32, 148, 101, 0.24);
+      transform-style: preserve-3d;
+    }
+
+    .brand-mark::before,
+    .brand-mark::after {
+      content: "";
+      position: absolute;
+      inset: 9px;
+      border-radius: 11px;
+      border: 1px solid rgba(142, 240, 183, 0.18);
+      transform: translateZ(16px);
+    }
+
+    .brand-mark::after {
+      inset: 15px;
+      border-color: rgba(119, 233, 255, 0.16);
+      transform: translateZ(26px);
+    }
+
+    .brand-mark span {
+      position: relative;
+      z-index: 1;
+      font-family: "Space Grotesk", sans-serif;
+      font-weight: 700;
+      color: #07110f;
+      font-size: 1rem;
+      width: 14px;
+      height: 14px;
+      background: linear-gradient(135deg, var(--primary), #d4ffe6);
+      border-radius: 999px;
+      display: block;
+      box-shadow: 0 0 22px rgba(142, 240, 183, 0.5);
+    }
+
+    .brand-copy {
+      display: flex;
+      flex-direction: column;
+      line-height: 1;
+    }
+
+    .brand-copy strong {
+      font-family: "Space Grotesk", sans-serif;
+      font-size: 1.05rem;
+      letter-spacing: -0.03em;
+    }
+
+    .brand-copy span {
+      font-size: 0.76rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    .nav-links {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(184, 255, 223, 0.08);
+      background: rgba(6, 18, 15, 0.4);
+      backdrop-filter: blur(18px);
+    }
+
+    .nav-links a {
+      padding: 10px 14px;
+      border-radius: 999px;
+      color: rgba(245, 255, 249, 0.78);
+      font-size: 0.9rem;
+      transition:
+        color 0.25s ease,
+        background 0.25s ease,
+        transform 0.25s ease;
+    }
+
+    .nav-links a:hover {
+      color: var(--text);
+      background: rgba(142, 240, 183, 0.08);
+      transform: translateY(-1px);
+    }
+
+    .nav-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .nav-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(184, 255, 223, 0.12);
+      background: rgba(9, 24, 21, 0.58);
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .nav-pill .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--primary);
+      box-shadow: 0 0 18px rgba(142, 240, 183, 0.6);
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-height: 54px;
+      padding: 0 24px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-weight: 700;
+      letter-spacing: -0.015em;
+      transition:
+        transform 0.25s ease,
+        box-shadow 0.25s ease,
+        background 0.25s ease,
+        border-color 0.25s ease,
+        color 0.25s ease;
+      cursor: pointer;
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+    }
+
+    .button-primary {
+      color: #06100d;
+      background: linear-gradient(135deg, #b9ffd4 0%, #8ef0b7 38%, #77e9ff 100%);
+      box-shadow: 0 16px 46px rgba(83, 208, 160, 0.32);
+    }
+
+    .button-primary:hover {
+      box-shadow: 0 22px 60px rgba(83, 208, 160, 0.38);
+    }
+
+    .button-secondary {
+      color: var(--text);
+      background: rgba(13, 27, 24, 0.56);
+      border-color: rgba(184, 255, 223, 0.14);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .button-secondary:hover {
+      background: rgba(16, 31, 28, 0.76);
+      border-color: rgba(184, 255, 223, 0.22);
+    }
+
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      padding-top: calc(var(--nav-height) + 28px);
+      display: flex;
+      align-items: center;
+    }
+
+    .hero-inner {
+      display: grid;
+      grid-template-columns: 1.02fr 0.98fr;
+      gap: 42px;
+      align-items: center;
+      padding: 44px 0 72px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(184, 255, 223, 0.14);
+      background: rgba(10, 24, 21, 0.56);
+      color: #d8ffea;
+      font-size: 0.86rem;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--primary), var(--cyan));
+      box-shadow: 0 0 18px rgba(119, 233, 255, 0.58);
+    }
+
+    .hero-copy h1 {
+      margin: 22px 0 18px;
+      font-family: "Space Grotesk", sans-serif;
+      font-size: clamp(3.4rem, 7vw, 7rem);
+      line-height: 0.94;
+      letter-spacing: -0.07em;
+      max-width: 9.5ch;
+    }
+
+    .hero-copy .gradient-line {
+      display: block;
+      background: linear-gradient(135deg, #fafffd 0%, #cfffe3 32%, #8ef0b7 56%, #77e9ff 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      background-size: 200% 200%;
+      animation: gradientShift 7s ease infinite;
+    }
+
+    @keyframes gradientShift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    .hero-copy p {
+      max-width: 660px;
+      margin: 0;
+      color: rgba(245, 255, 249, 0.72);
+      font-size: 1.08rem;
+      line-height: 1.8;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 30px;
+    }
+
+    .hero-meta {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 30px;
+      max-width: 700px;
+    }
+
+    .meta-card {
+      position: relative;
+      overflow: hidden;
+      padding: 18px 18px 16px;
+      border-radius: 22px;
+      border: 1px solid rgba(184, 255, 223, 0.11);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent),
+        rgba(10, 22, 19, 0.64);
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: blur(18px);
+    }
+
+    .meta-card::before {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+      transform: translateX(-100%);
+      animation: shimmer 6s linear infinite;
+      pointer-events: none;
+    }
+
+    @keyframes shimmer {
+      to { transform: translateX(100%); }
+    }
+
+    .meta-card strong {
+      display: block;
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .meta-card span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    .hero-visual {
+      position: relative;
+      min-height: 680px;
+      perspective: 2000px;
+      perspective-origin: 50% 32%;
+    }
+
+    .visual-stack {
+      position: sticky;
+      top: 120px;
+      transform-style: preserve-3d;
+      height: 680px;
+      transition: transform 0.22s ease;
+    }
+
+    .hero-orbit {
+      position: absolute;
+      inset: 10% 8% auto;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      border: 1px solid rgba(184, 255, 223, 0.07);
+      transform-style: preserve-3d;
+      animation: spin 22s linear infinite;
+      filter: drop-shadow(0 0 20px rgba(119, 233, 255, 0.12));
+    }
+
+    .hero-orbit::before,
+    .hero-orbit::after {
+      content: "";
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      top: 50%;
+      left: 50%;
+      margin: -9px;
+      background: linear-gradient(135deg, rgba(142, 240, 183, 0.9), rgba(119, 233, 255, 0.85));
+      box-shadow: 0 0 26px rgba(119, 233, 255, 0.42);
+    }
+
+    .hero-orbit::before {
+      transform: translateX(235px) translateZ(20px);
+    }
+
+    .hero-orbit::after {
+      transform: translateX(-235px) translateZ(-20px);
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .floating-chip {
+      position: absolute;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(184, 255, 223, 0.14);
+      background: rgba(8, 24, 20, 0.7);
+      color: #dcfff0;
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: blur(18px);
+      transform-style: preserve-3d;
+      animation: float 7s ease-in-out infinite;
+    }
+
+    .floating-chip .chip-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--primary);
+      box-shadow: 0 0 14px rgba(142, 240, 183, 0.54);
+    }
+
+    .floating-chip:nth-of-type(1) {
+      top: 18px;
+      right: 46px;
+      animation-delay: -0.4s;
+    }
+
+    .floating-chip:nth-of-type(2) {
+      bottom: 102px;
+      left: 8px;
+      animation-delay: -1.5s;
+    }
+
+    .floating-chip:nth-of-type(3) {
+      top: 260px;
+      right: -4px;
+      animation-delay: -2.4s;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) translateZ(28px); }
+      50% { transform: translateY(-12px) translateZ(46px); }
+    }
+
+    .hero-window {
+      --mx: 0px;
+      --my: 0px;
+      position: absolute;
+      border-radius: 30px;
+      overflow: hidden;
+      border: 1px solid rgba(184, 255, 223, 0.14);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent),
+        rgba(8, 21, 18, 0.82);
+      backdrop-filter: blur(20px);
+      box-shadow: 0 40px 120px rgba(0, 0, 0, 0.46);
+      transform-style: preserve-3d;
+      will-change: transform;
+      transition: transform 0.22s ease;
+    }
+
+    .window-main {
+      width: min(620px, 100%);
+      top: 84px;
+      right: 16px;
+      transform:
+        translate3d(var(--mx), var(--my), 0)
+        rotateX(13deg)
+        rotateY(-17deg)
+        rotateZ(2deg)
+        translateZ(20px);
+    }
+
+    .window-side {
+      width: 260px;
+      left: 6px;
+      top: 144px;
+      transform:
+        translate3d(var(--mx), var(--my), 0)
+        rotateX(18deg)
+        rotateY(26deg)
+        rotateZ(-5deg)
+        translateZ(110px);
+    }
+
+    .window-bottom {
+      width: 330px;
+      right: 66px;
+      bottom: 28px;
+      transform:
+        translate3d(var(--mx), var(--my), 0)
+        rotateX(22deg)
+        rotateY(-10deg)
+        rotateZ(-3deg)
+        translateZ(88px);
+    }
+
+    .window-bar {
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      border-bottom: 1px solid rgba(184, 255, 223, 0.08);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015));
+    }
+
+    .window-dots {
+      display: flex;
+      gap: 8px;
+    }
+
+    .window-dots span {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    .window-dots span:nth-child(1) { background: #ff8a72; }
+    .window-dots span:nth-child(2) { background: #ffd16f; }
+    .window-dots span:nth-child(3) { background: #7cf3ab; }
+
+    .window-title {
+      color: rgba(245, 255, 249, 0.7);
+      font-size: 0.88rem;
+      letter-spacing: -0.01em;
+    }
+
+    .window-content {
+      padding: 18px;
+    }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: 210px 1fr;
+      min-height: 360px;
+      gap: 16px;
+    }
+
+    .sidebar-card,
+    .content-card,
+    .panel-card {
+      border-radius: 22px;
+      border: 1px solid rgba(184, 255, 223, 0.1);
+      background: rgba(255, 255, 255, 0.03);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .sidebar-card {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .repo-mini {
+      padding: 14px 14px 13px;
+      border-radius: 18px;
+      border: 1px solid transparent;
+      background: rgba(7, 18, 16, 0.52);
+      transition: transform 0.3s ease;
+    }
+
+    .repo-mini.active {
+      border-color: rgba(142, 240, 183, 0.24);
+      background: linear-gradient(180deg, rgba(142, 240, 183, 0.12), rgba(9, 21, 18, 0.74));
+      transform: translateX(8px);
+    }
+
+    .repo-top,
+    .repo-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .repo-name {
+      font-weight: 700;
+      font-size: 0.93rem;
+      letter-spacing: -0.02em;
+    }
+
+    .repo-branch,
+    .repo-meta {
+      color: var(--muted);
+      font-size: 0.73rem;
+    }
+
+    .repo-status-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: var(--primary);
+      box-shadow: 0 0 12px rgba(142, 240, 183, 0.45);
+    }
+
+    .content-card {
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .content-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(184, 255, 223, 0.08);
+    }
+
+    .content-title strong {
+      display: block;
+      font-size: 1.2rem;
+      letter-spacing: -0.03em;
+    }
+
+    .content-title span,
+    .content-actions span {
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .content-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .mini-badge {
+      padding: 9px 11px;
+      border-radius: 999px;
+      background: rgba(142, 240, 183, 0.08);
+      border: 1px solid rgba(184, 255, 223, 0.12);
+      color: #d9fff0;
+      font-size: 0.78rem;
+    }
+
+    .changes-grid {
+      display: grid;
+      grid-template-columns: 1.12fr 0.88fr;
+      gap: 14px;
+    }
+
+    .file-list,
+    .diff-view {
+      border-radius: 18px;
+      background: rgba(7, 17, 15, 0.54);
+      border: 1px solid rgba(184, 255, 223, 0.08);
+      padding: 14px;
+    }
+
+    .list-heading,
+    .diff-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    .file-item {
+      display: grid;
+      grid-template-columns: 14px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 11px 12px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.025);
+      margin-bottom: 9px;
+    }
+
+    .file-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .file-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--gold);
+      box-shadow: 0 0 12px rgba(244, 213, 151, 0.35);
+    }
+
+    .file-item:nth-child(3) .file-dot {
+      background: var(--cyan);
+      box-shadow: 0 0 12px rgba(119, 233, 255, 0.35);
+    }
+
+    .file-name {
+      font-size: 0.83rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .file-tag {
+      padding: 6px 9px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      color: rgba(245, 255, 249, 0.76);
+      font-size: 0.7rem;
+    }
+
+    .code-line {
+      height: 14px;
+      margin-bottom: 10px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(142, 240, 183, 0.18), rgba(119, 233, 255, 0.05));
+      position: relative;
+      overflow: hidden;
+    }
+
+    .code-line:nth-child(2n) {
+      width: 88%;
+    }
+
+    .code-line:nth-child(3n) {
+      width: 64%;
+    }
+
+    .code-line::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+      transform: translateX(-100%);
+      animation: shimmer 4.8s linear infinite;
+    }
+
+    .panel-body {
+      padding: 18px;
+    }
+
+    .stacked-bars {
+      display: grid;
+      gap: 12px;
+    }
+
+    .stacked-bar {
+      height: 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.04);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .stacked-bar span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, rgba(142, 240, 183, 0.88), rgba(119, 233, 255, 0.84));
+      width: var(--w, 50%);
+      box-shadow: 0 0 18px rgba(119, 233, 255, 0.18);
+    }
+
+    .stats-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .stats-strip .cell {
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(184, 255, 223, 0.08);
+    }
+
+    .stats-strip .cell strong {
+      display: block;
+      font-size: 1.12rem;
+      letter-spacing: -0.03em;
+    }
+
+    .stats-strip .cell span {
+      color: var(--muted);
+      font-size: 0.75rem;
+    }
+
+    .section {
+      position: relative;
+      padding: 84px 0;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 30px;
+    }
+
+    .section-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+      color: #cdfedd;
+      font-size: 0.83rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .section-kicker::before {
+      content: "";
+      width: 32px;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(142, 240, 183, 0), rgba(142, 240, 183, 0.8));
+    }
+
+    .section-header h2 {
+      margin: 0;
+      max-width: 12ch;
+      font-family: "Space Grotesk", sans-serif;
+      font-size: clamp(2rem, 4vw, 3.8rem);
+      line-height: 0.98;
+      letter-spacing: -0.06em;
+    }
+
+    .section-header p {
+      max-width: 500px;
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    .grid-3,
+    .grid-4 {
+      display: grid;
+      gap: 18px;
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .grid-4 {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .feature-card,
+    .story-card,
+    .developer-card,
+    .cta-card {
+      position: relative;
+      overflow: hidden;
+      border-radius: var(--radius-xl);
+      border: 1px solid rgba(184, 255, 223, 0.12);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent),
+        rgba(8, 21, 18, 0.72);
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: blur(20px);
+    }
+
+    .feature-card {
+      padding: 24px;
+      min-height: 252px;
+      transform-style: preserve-3d;
+      transition:
+        transform 0.35s ease,
+        border-color 0.35s ease,
+        box-shadow 0.35s ease;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-8px) rotateX(3deg) rotateY(-3deg);
+      border-color: rgba(184, 255, 223, 0.2);
+      box-shadow: 0 30px 70px rgba(0, 0, 0, 0.28);
+    }
+
+    .feature-card::before,
+    .story-card::before,
+    .developer-card::before,
+    .cta-card::before {
+      content: "";
+      position: absolute;
+      inset: -35% auto auto -20%;
+      width: 220px;
+      height: 220px;
+      background: radial-gradient(circle, rgba(142, 240, 183, 0.18), transparent 70%);
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .feature-icon {
+      width: 56px;
+      height: 56px;
+      display: grid;
+      place-items: center;
+      border-radius: 18px;
+      margin-bottom: 22px;
+      background:
+        linear-gradient(135deg, rgba(142, 240, 183, 0.18), rgba(119, 233, 255, 0.16)),
+        rgba(6, 18, 15, 0.8);
+      border: 1px solid rgba(184, 255, 223, 0.12);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .feature-icon svg {
+      width: 25px;
+      height: 25px;
+      stroke: #d9ffea;
+    }
+
+    .feature-card h3,
+    .story-card h3,
+    .developer-card h3,
+    .cta-card h3 {
+      margin: 0 0 12px;
+      font-size: 1.22rem;
+      letter-spacing: -0.04em;
+    }
+
+    .feature-card p,
+    .story-card p,
+    .developer-card p,
+    .cta-card p,
+    .story-step p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.75;
+      font-size: 0.96rem;
+    }
+
+    .feature-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .feature-tags span {
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(184, 255, 223, 0.08);
+      color: rgba(245, 255, 249, 0.76);
+      font-size: 0.72rem;
+    }
+
+    .story-layout {
+      display: grid;
+      grid-template-columns: 0.88fr 1.12fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .story-card {
+      padding: 28px;
+      min-height: 520px;
+    }
+
+    .story-card.primary {
+      background:
+        radial-gradient(circle at top right, rgba(119, 233, 255, 0.14), transparent 28%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent),
+        rgba(8, 21, 18, 0.76);
+    }
+
+    .story-visual {
+      position: relative;
+      height: 100%;
+      border-radius: 24px;
+      border: 1px solid rgba(184, 255, 223, 0.1);
+      background:
+        radial-gradient(circle at 30% 20%, rgba(142, 240, 183, 0.14), transparent 28%),
+        radial-gradient(circle at 75% 82%, rgba(119, 233, 255, 0.16), transparent 30%),
+        rgba(6, 16, 14, 0.8);
+      overflow: hidden;
+      padding: 22px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .pulse-rings {
+      position: absolute;
+      inset: 50% auto auto 50%;
+      width: 260px;
+      height: 260px;
+      transform: translate(-50%, -50%);
+    }
+
+    .pulse-rings span {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 1px solid rgba(184, 255, 223, 0.12);
+      animation: pulseRing 5s linear infinite;
+    }
+
+    .pulse-rings span:nth-child(2) {
+      inset: 24px;
+      animation-delay: -1.6s;
+    }
+
+    .pulse-rings span:nth-child(3) {
+      inset: 48px;
+      animation-delay: -3.1s;
+    }
+
+    @keyframes pulseRing {
+      0% {
+        opacity: 0.18;
+        transform: scale(0.9);
+      }
+      50% {
+        opacity: 0.48;
+      }
+      100% {
+        opacity: 0.06;
+        transform: scale(1.08);
+      }
+    }
+
+    .visual-center-card {
+      position: absolute;
+      inset: 50% auto auto 50%;
+      width: min(320px, calc(100% - 46px));
+      transform: translate(-50%, -50%) rotateX(18deg) rotateY(-18deg);
+      border-radius: 26px;
+      padding: 22px;
+      background:
+        linear-gradient(135deg, rgba(142, 240, 183, 0.11), rgba(119, 233, 255, 0.08)),
+        rgba(7, 19, 16, 0.92);
+      border: 1px solid rgba(184, 255, 223, 0.14);
+      box-shadow: 0 34px 90px rgba(0, 0, 0, 0.35);
+      transform-style: preserve-3d;
+    }
+
+    .visual-center-card .label {
+      display: inline-flex;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(142, 240, 183, 0.08);
+      color: #d9ffea;
+      font-size: 0.72rem;
+      border: 1px solid rgba(184, 255, 223, 0.12);
+    }
+
+    .visual-center-card strong {
+      display: block;
+      margin-top: 16px;
+      font-size: 1.35rem;
+      letter-spacing: -0.04em;
+    }
+
+    .visual-center-card p {
+      margin-top: 10px;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 0.92rem;
+    }
+
+    .mini-stat-grid {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .mini-stat-grid .mini-stat {
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.035);
+      border: 1px solid rgba(184, 255, 223, 0.08);
+    }
+
+    .mini-stat strong {
+      display: block;
+      font-size: 1rem;
+    }
+
+    .mini-stat span {
+      display: block;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 0.72rem;
+    }
+
+    .story-steps {
+      display: grid;
+      gap: 16px;
+    }
+
+    .story-step {
+      position: relative;
+      display: grid;
+      grid-template-columns: 54px 1fr;
+      gap: 16px;
+      align-items: start;
+      padding: 18px;
+      border-radius: 22px;
+      border: 1px solid rgba(184, 255, 223, 0.1);
+      background: rgba(255, 255, 255, 0.025);
+      transition:
+        transform 0.3s ease,
+        background 0.3s ease,
+        border-color 0.3s ease;
+    }
+
+    .story-step:hover {
+      transform: translateX(8px);
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(184, 255, 223, 0.16);
+    }
+
+    .step-number {
+      width: 54px;
+      height: 54px;
+      display: grid;
+      place-items: center;
+      border-radius: 18px;
+      font-family: "Space Grotesk", sans-serif;
+      font-weight: 700;
+      background:
+        linear-gradient(135deg, rgba(142, 240, 183, 0.22), rgba(119, 233, 255, 0.14)),
+        rgba(8, 22, 18, 0.8);
+      border: 1px solid rgba(184, 255, 223, 0.12);
+      color: #d9ffea;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .step-copy strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 1.06rem;
+      letter-spacing: -0.03em;
+    }
+
+    .developer-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .developer-card {
+      padding: 24px;
+      min-height: 240px;
+    }
+
+    .terminal {
+      margin-top: 18px;
+      border-radius: 18px;
+      border: 1px solid rgba(184, 255, 223, 0.08);
+      background: rgba(5, 14, 12, 0.78);
+      padding: 14px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      color: #cbffe0;
+      font-size: 0.84rem;
+      line-height: 1.85;
+      overflow: auto;
+    }
+
+    .terminal .prompt {
+      color: #77e9ff;
+    }
+
+    .cta-card {
+      padding: 32px;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 18px;
+      align-items: center;
+      background:
+        radial-gradient(circle at 80% 20%, rgba(119, 233, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 20% 80%, rgba(142, 240, 183, 0.18), transparent 28%),
+        rgba(7, 20, 16, 0.82);
+    }
+
+    .cta-card h3 {
+      font-family: "Space Grotesk", sans-serif;
+      font-size: clamp(1.9rem, 3vw, 3rem);
+      line-height: 0.98;
+      letter-spacing: -0.05em;
+      margin-bottom: 14px;
+    }
+
+    .cta-side {
+      display: grid;
+      gap: 12px;
+    }
+
+    .cta-side .note {
+      padding: 16px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(184, 255, 223, 0.1);
+      color: rgba(245, 255, 249, 0.82);
+      line-height: 1.7;
+    }
+
+    footer {
+      padding: 26px 0 52px;
+      color: rgba(159, 183, 173, 0.9);
+      font-size: 0.9rem;
+    }
+
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      border-top: 1px solid rgba(184, 255, 223, 0.08);
+      padding-top: 24px;
+    }
+
+    .footer-inner strong {
+      color: rgba(245, 255, 249, 0.84);
+    }
+
+    .mobile-menu {
+      display: none;
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      border: 1px solid rgba(184, 255, 223, 0.12);
+      background: rgba(10, 24, 21, 0.7);
+      color: var(--text);
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .mobile-panel {
+      position: fixed;
+      top: calc(var(--nav-height) + 10px);
+      right: 14px;
+      left: 14px;
+      padding: 14px;
+      border-radius: 24px;
+      border: 1px solid rgba(184, 255, 223, 0.12);
+      background: rgba(7, 18, 15, 0.9);
+      backdrop-filter: blur(22px);
+      box-shadow: var(--shadow-soft);
+      display: none;
+      z-index: 45;
+    }
+
+    .mobile-panel.open {
+      display: grid;
+      gap: 8px;
+    }
+
+    .mobile-panel a {
+      padding: 14px 16px;
+      border-radius: 18px;
+      color: rgba(245, 255, 249, 0.82);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .mobile-panel .button {
+      margin-top: 6px;
+      width: 100%;
+    }
+
+    @media (max-width: 1180px) {
+      .hero-inner,
+      .story-layout,
+      .cta-card {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-visual {
+        min-height: 600px;
+      }
+
+      .visual-stack {
+        position: relative;
+        top: 0;
+        height: 600px;
+      }
+
+      .grid-4 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .developer-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 920px) {
+      .nav-links,
+      .nav-pill {
+        display: none;
+      }
+
+      .mobile-menu {
+        display: inline-flex;
+      }
+
+      .hero {
+        min-height: auto;
+      }
+
+      .hero-inner {
+        padding-top: 24px;
+      }
+
+      .hero-copy h1 {
+        max-width: none;
+      }
+
+      .hero-meta,
+      .grid-3,
+      .grid-4,
+      .changes-grid,
+      .stats-strip {
+        grid-template-columns: 1fr;
+      }
+
+      .app-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .window-side,
+      .window-bottom {
+        display: none;
+      }
+
+      .window-main {
+        position: relative;
+        top: 0;
+        right: auto;
+        width: 100%;
+        transform: translate3d(var(--mx), var(--my), 0) rotateX(8deg) rotateY(-10deg) rotateZ(1deg);
+      }
+
+      .floating-chip:nth-of-type(3) {
+        display: none;
+      }
+
+      .section-header {
+        align-items: start;
+        flex-direction: column;
+      }
+
+      .section-header h2,
+      .section-header p {
+        max-width: none;
+      }
+
+      .footer-inner {
+        flex-direction: column;
+        align-items: start;
+      }
+    }
+
+    @media (max-width: 640px) {
+      :root {
+        --nav-height: 76px;
+      }
+
+      .container {
+        width: min(100vw - 24px, 1180px);
+      }
+
+      .hero-copy h1 {
+        font-size: clamp(2.7rem, 14vw, 4.6rem);
+      }
+
+      .hero-copy p {
+        font-size: 1rem;
+      }
+
+      .button {
+        width: 100%;
+      }
+
+      .hero-actions {
+        flex-direction: column;
+      }
+
+      .hero-visual,
+      .visual-stack {
+        min-height: 460px;
+        height: 460px;
+      }
+
+      .window-main {
+        border-radius: 24px;
+      }
+
+      .window-content {
+        padding: 14px;
+      }
+
+      .story-card,
+      .feature-card,
+      .developer-card,
+      .cta-card {
+        padding: 22px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="scene" aria-hidden="true"></canvas>
+  <div class="noise" aria-hidden="true"></div>
+
+  <div class="page-shell">
+    <header class="nav" id="nav">
+      <div class="nav-inner">
+        <a class="brand" href="#top" aria-label="Grove home">
+          <div class="brand-mark"><span></span></div>
+          <div class="brand-copy">
+            <strong>Grove</strong>
+            <span>Multi-repo Git workspace</span>
+          </div>
+        </a>
+
+        <nav class="nav-links" aria-label="Primary">
+          <a href="#features">Features</a>
+          <a href="#flow">Flow</a>
+          <a href="#developers">Developers</a>
+        </nav>
+
+        <div class="nav-actions">
+          <div class="nav-pill">
+            <span class="dot"></span>
+            <span>macOS-focused</span>
+          </div>
+          <a class="button button-primary" href="#get-started">Launch The Experience</a>
+          <button class="mobile-menu" id="mobile-menu" aria-label="Toggle menu">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M4 7h16M4 12h16M4 17h16" stroke-linecap="round"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="mobile-panel" id="mobile-panel">
+        <a href="#features">Features</a>
+        <a href="#flow">Flow</a>
+        <a href="#developers">Developers</a>
+        <a class="button button-primary" href="#get-started">Get Started</a>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="container hero-inner">
+          <div class="hero-copy reveal">
+            <span class="eyebrow">Git management, reimagined for a full workspace</span>
+            <h1>
+              The Git dashboard that feels
+              <span class="gradient-line">alive.</span>
+            </h1>
+            <p>
+              Grove turns multi-repo development into one immersive desktop flow. Track dirty repos,
+              inspect diffs, manage branches, launch tools, and move through your workspace without
+              the usual mess of terminal tabs and scattered windows.
+            </p>
+
+            <div class="hero-actions">
+              <a class="button button-primary" href="#features">Explore Grove</a>
+              <a class="button button-secondary" href="#developers">See Developer Notes</a>
+            </div>
+
+            <div class="hero-meta">
+              <article class="meta-card">
+                <strong>Multi-repo</strong>
+                <span>Scan folders, group projects, fetch all, and pull all from one elegant sidebar.</span>
+              </article>
+              <article class="meta-card">
+                <strong>Desktop-native</strong>
+                <span>Built on Tauri for a fast, tactile app feel instead of another plain web panel.</span>
+              </article>
+              <article class="meta-card">
+                <strong>Real Git power</strong>
+                <span>Branches, remotes, stash, tags, history, conflict actions, and AI commit help.</span>
+              </article>
+            </div>
+          </div>
+
+          <div class="hero-visual reveal" id="hero-visual">
+            <div class="visual-stack" id="visual-stack">
+              <div class="hero-orbit"></div>
+
+              <div class="floating-chip">
+                <span class="chip-dot"></span>
+                <span>9 repos active</span>
+              </div>
+              <div class="floating-chip">
+                <span class="chip-dot"></span>
+                <span>Fetch all complete</span>
+              </div>
+              <div class="floating-chip">
+                <span class="chip-dot"></span>
+                <span>Branch synced</span>
+              </div>
+
+              <article class="hero-window window-main" data-depth="22">
+                <div class="window-bar">
+                  <div class="window-dots"><span></span><span></span><span></span></div>
+                  <div class="window-title">Grove Workspace</div>
+                </div>
+                <div class="window-content">
+                  <div class="app-shell">
+                    <div class="sidebar-card">
+                      <div class="repo-mini active">
+                        <div class="repo-top">
+                          <span class="repo-name">grove</span>
+                          <span class="repo-status-dot"></span>
+                        </div>
+                        <div class="repo-bottom">
+                          <span class="repo-branch">main</span>
+                          <span class="repo-meta">6 changes</span>
+                        </div>
+                      </div>
+                      <div class="repo-mini">
+                        <div class="repo-top">
+                          <span class="repo-name">api-core</span>
+                          <span class="repo-status-dot" style="background:#77e9ff; box-shadow:0 0 12px rgba(119,233,255,.45)"></span>
+                        </div>
+                        <div class="repo-bottom">
+                          <span class="repo-branch">release/v2</span>
+                          <span class="repo-meta">behind 2</span>
+                        </div>
+                      </div>
+                      <div class="repo-mini">
+                        <div class="repo-top">
+                          <span class="repo-name">design-system</span>
+                          <span class="repo-status-dot" style="background:#f4d597; box-shadow:0 0 12px rgba(244,213,151,.4)"></span>
+                        </div>
+                        <div class="repo-bottom">
+                          <span class="repo-branch">feat/cards</span>
+                          <span class="repo-meta">3 staged</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="content-card">
+                      <div class="content-header">
+                        <div class="content-title">
+                          <strong>Changes</strong>
+                          <span>One repo, all signal, zero clutter</span>
+                        </div>
+                        <div class="content-actions">
+                          <span class="mini-badge">Fetch</span>
+                          <span class="mini-badge">Pull</span>
+                          <span class="mini-badge">Push</span>
+                        </div>
+                      </div>
+
+                      <div class="changes-grid">
+                        <div class="file-list">
+                          <div class="list-heading">
+                            <span>Working tree</span>
+                            <span>6 files</span>
+                          </div>
+                          <div class="file-item">
+                            <span class="file-dot"></span>
+                            <span class="file-name">src/components/RepoCard.tsx</span>
+                            <span class="file-tag">modified</span>
+                          </div>
+                          <div class="file-item">
+                            <span class="file-dot"></span>
+                            <span class="file-name">src/lib/settings.ts</span>
+                            <span class="file-tag">staged</span>
+                          </div>
+                          <div class="file-item">
+                            <span class="file-dot"></span>
+                            <span class="file-name">README.md</span>
+                            <span class="file-tag">docs</span>
+                          </div>
+                        </div>
+
+                        <div class="diff-view">
+                          <div class="diff-heading">
+                            <span>Diff preview</span>
+                            <span>live</span>
+                          </div>
+                          <div class="code-line"></div>
+                          <div class="code-line"></div>
+                          <div class="code-line"></div>
+                          <div class="code-line"></div>
+                          <div class="code-line"></div>
+                          <div class="code-line"></div>
+                          <div class="code-line"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              <article class="hero-window window-side" data-depth="36">
+                <div class="window-bar">
+                  <div class="window-dots"><span></span><span></span><span></span></div>
+                  <div class="window-title">Workspace Health</div>
+                </div>
+                <div class="panel-body">
+                  <div class="stacked-bars">
+                    <div class="stacked-bar" style="--w: 72%"><span></span></div>
+                    <div class="stacked-bar" style="--w: 58%"><span></span></div>
+                    <div class="stacked-bar" style="--w: 91%"><span></span></div>
+                    <div class="stacked-bar" style="--w: 36%"><span></span></div>
+                  </div>
+                  <div class="stats-strip">
+                    <div class="cell">
+                      <strong>12</strong>
+                      <span>dirty repos</span>
+                    </div>
+                    <div class="cell">
+                      <strong>4</strong>
+                      <span>behind origin</span>
+                    </div>
+                    <div class="cell">
+                      <strong>27</strong>
+                      <span>staged files</span>
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              <article class="hero-window window-bottom" data-depth="28">
+                <div class="window-bar">
+                  <div class="window-dots"><span></span><span></span><span></span></div>
+                  <div class="window-title">Commit Assistant</div>
+                </div>
+                <div class="panel-body">
+                  <div class="mini-badge">AI commit message</div>
+                  <p style="margin:16px 0 0; color:var(--muted); line-height:1.7; font-size:.92rem;">
+                    Generate a tight commit message from staged diffs, then push without breaking flow.
+                  </p>
+                  <div class="terminal" style="margin-top:16px;">
+                    <span class="prompt">$</span> feat(workspace): add grouped repo motion cards
+                  </div>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="features">
+        <div class="container">
+          <div class="section-header reveal">
+            <div>
+              <span class="section-kicker">Features</span>
+              <h2>Everything you need, without feeling overloaded.</h2>
+            </div>
+            <p>
+              Grove is not trying to be every developer tool at once. It focuses on the Git actions
+              that matter every day and wraps them in a richer, faster workspace.
+            </p>
+          </div>
+
+          <div class="grid-4">
+            <article class="feature-card reveal">
+              <div class="feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8">
+                  <path d="M8 6h8M8 12h8M8 18h8M4 6h.01M4 12h.01M4 18h.01" stroke-linecap="round"></path>
+                </svg>
+              </div>
+              <h3>Multi-repo command center</h3>
+              <p>
+                See all your repositories in one place, sort dirty work to the top, create your own order,
+                and group related projects together.
+              </p>
+              <div class="feature-tags">
+                <span>workspace scan</span>
+                <span>groups</span>
+                <span>drag reorder</span>
+              </div>
+            </article>
+
+            <article class="feature-card reveal">
+              <div class="feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8">
+                  <path d="M7 7h10v10H7z"></path>
+                  <path d="M4 4h4M16 4h4M4 20h4M16 20h4" stroke-linecap="round"></path>
+                </svg>
+              </div>
+              <h3>Fast, visual Git operations</h3>
+              <p>
+                Stage, unstage, discard, diff, commit, amend, fetch, pull, push, force-push, stash,
+                tag, and remote management all live inside one polished interface.
+              </p>
+              <div class="feature-tags">
+                <span>diffs</span>
+                <span>history</span>
+                <span>remotes</span>
+              </div>
+            </article>
+
+            <article class="feature-card reveal">
+              <div class="feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8">
+                  <path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"></path>
+                </svg>
+              </div>
+              <h3>Launch straight into work</h3>
+              <p>
+                Open the selected repo instantly in your editor, terminal, or Finder, using your own setup
+                instead of adapting to a closed environment.
+              </p>
+              <div class="feature-tags">
+                <span>VS Code</span>
+                <span>iTerm2</span>
+                <span>Finder</span>
+              </div>
+            </article>
+
+            <article class="feature-card reveal">
+              <div class="feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8">
+                  <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"></path>
+                  <path d="M12 10.5l8-4.5M12 10.5v10.5M12 10.5L4 6" stroke-linecap="round"></path>
+                </svg>
+              </div>
+              <h3>Optional AI commit flow</h3>
+              <p>
+                Generate commit messages from staged diffs using Anthropic, OpenAI, or Gemini, while keeping
+                configuration local to the app.
+              </p>
+              <div class="feature-tags">
+                <span>Anthropic</span>
+                <span>OpenAI</span>
+                <span>Gemini</span>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="flow">
+        <div class="container">
+          <div class="section-header reveal">
+            <div>
+              <span class="section-kicker">Flow</span>
+              <h2>A smoother path from repo chaos to clarity.</h2>
+            </div>
+            <p>
+              The landing page is dramatic because the product should feel dramatic too: faster signal,
+              cleaner decisions, less friction, and a much stronger sense of control.
+            </p>
+          </div>
+
+          <div class="story-layout">
+            <article class="story-card primary reveal">
+              <div class="story-visual">
+                <div class="pulse-rings">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+                <div class="visual-center-card">
+                  <span class="label">Live workspace pulse</span>
+                  <strong>See what matters before you click.</strong>
+                  <p>
+                    Grove surfaces the right signal early: dirty repos, behind branches, staged files,
+                    and change density, all inside a layout that feels spatial rather than flat.
+                  </p>
+                  <div class="mini-stat-grid">
+                    <div class="mini-stat">
+                      <strong>Cmd + K</strong>
+                      <span>global search</span>
+                    </div>
+                    <div class="mini-stat">
+                      <strong>Fetch all</strong>
+                      <span>workspace action</span>
+                    </div>
+                    <div class="mini-stat">
+                      <strong>Diff view</strong>
+                      <span>before commit</span>
+                    </div>
+                    <div class="mini-stat">
+                      <strong>Branch tools</strong>
+                      <span>without leaving flow</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <article class="story-card reveal">
+              <div class="story-steps">
+                <div class="story-step">
+                  <div class="step-number">01</div>
+                  <div class="step-copy">
+                    <strong>Add the workspace</strong>
+                    <p>Pick a folder, let Grove scan nested repositories, and immediately see which projects are active, behind, or dirty.</p>
+                  </div>
+                </div>
+
+                <div class="story-step">
+                  <div class="step-number">02</div>
+                  <div class="step-copy">
+                    <strong>Inspect what changed</strong>
+                    <p>Open a repo, review file diffs, file history, last commit context, and working tree state without bouncing between tools.</p>
+                  </div>
+                </div>
+
+                <div class="story-step">
+                  <div class="step-number">03</div>
+                  <div class="step-copy">
+                    <strong>Take action quickly</strong>
+                    <p>Commit, amend, stash, branch, rebase, cherry-pick, or manage remotes from one interface that stays focused on momentum.</p>
+                  </div>
+                </div>
+
+                <div class="story-step">
+                  <div class="step-number">04</div>
+                  <div class="step-copy">
+                    <strong>Jump into your tools</strong>
+                    <p>Launch the repo in your preferred editor or terminal as soon as you need deeper work, without losing your workspace context.</p>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="developers">
+        <div class="container">
+          <div class="section-header reveal">
+            <div>
+              <span class="section-kicker">Developers</span>
+              <h2>Built like a real desktop product, not just a styled demo.</h2>
+            </div>
+            <p>
+              Grove keeps a clean separation between the React frontend and the Rust-backed Tauri shell,
+              while still using your system Git so existing credentials and hooks continue to work.
+            </p>
+          </div>
+
+          <div class="developer-grid">
+            <article class="developer-card reveal">
+              <h3>Product stack</h3>
+              <p>
+                Tauri 2 for the desktop shell, React 19 and TypeScript for the UI layer, Rust for native
+                commands, Tailwind CSS v4 and shadcn/ui for component styling.
+              </p>
+              <div class="terminal">
+                <span class="prompt">stack</span><br>
+                Tauri 2<br>
+                React 19<br>
+                TypeScript<br>
+                Rust<br>
+                Tailwind CSS v4
+              </div>
+            </article>
+
+            <article class="developer-card reveal">
+              <h3>Git architecture</h3>
+              <p>
+                Git actions run through the system <code>git</code> binary, so SSH keys, credentials, hooks,
+                and user config behave the way developers already expect.
+              </p>
+              <div class="terminal">
+                <span class="prompt">$</span> git status --porcelain<br>
+                <span class="prompt">$</span> git fetch --prune<br>
+                <span class="prompt">$</span> git push --force-with-lease
+              </div>
+            </article>
+
+            <article class="developer-card reveal">
+              <h3>Single-file landing page</h3>
+              <p>
+                This page is intentionally self-contained inside <code>landing.html</code>, with custom CSS,
+                canvas motion, reveal animations, parallax depth, and responsive layout logic in one file.
+              </p>
+              <div class="terminal">
+                <span class="prompt">file</span><br>
+                grove/landing.html<br>
+                standalone layout<br>
+                interactive motion<br>
+                responsive sections
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="get-started">
+        <div class="container">
+          <article class="cta-card reveal">
+            <div>
+              <h3>Grove should feel like the control room for your codebase.</h3>
+              <p>
+                One workspace. Rich Git actions. Better motion. Better focus. Better signal. If the app itself
+                is about reducing friction, the landing page should carry the same energy.
+              </p>
+              <div class="hero-actions" style="margin-top:26px;">
+                <a class="button button-primary" href="README.md">Read The README</a>
+                <a class="button button-secondary" href="#top">Back To Top</a>
+              </div>
+            </div>
+
+            <div class="cta-side">
+              <div class="note">
+                <strong style="display:block; margin-bottom:8px; color:var(--text);">Built for modern Git flow</strong>
+                Bulk actions, file-level diffs, branch tools, commit history, remotes, stash, tags, launcher shortcuts, and optional AI.
+              </div>
+              <div class="note">
+                <strong style="display:block; margin-bottom:8px; color:var(--text);">Made for Grove</strong>
+                The visual system leans into Grove's green-cyan palette, glassy desktop surfaces, spatial layering, and animated workspace energy.
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="container footer-inner">
+        <div>
+          <strong>Grove</strong> · Multi-repo Git workspace for a sharper desktop workflow.
+        </div>
+        <div>Single-page landing experience in <code>landing.html</code></div>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      const nav = document.getElementById("nav");
+      const menuButton = document.getElementById("mobile-menu");
+      const mobilePanel = document.getElementById("mobile-panel");
+      const revealNodes = document.querySelectorAll(".reveal");
+      const parallaxRoot = document.getElementById("visual-stack");
+      const parallaxLayers = document.querySelectorAll("[data-depth]");
+      const body = document.body;
+
+      function onScroll() {
+        nav.classList.toggle("is-scrolled", window.scrollY > 14);
+      }
+
+      onScroll();
+      window.addEventListener("scroll", onScroll, { passive: true });
+
+      if (menuButton && mobilePanel) {
+        menuButton.addEventListener("click", function () {
+          mobilePanel.classList.toggle("open");
+        });
+
+        mobilePanel.querySelectorAll("a").forEach(function (link) {
+          link.addEventListener("click", function () {
+            mobilePanel.classList.remove("open");
+          });
+        });
+      }
+
+      const observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.16 });
+
+      revealNodes.forEach(function (node, index) {
+        node.style.transitionDelay = (index % 6) * 0.05 + "s";
+        observer.observe(node);
+      });
+
+      function setPointerVars(clientX, clientY) {
+        const x = (clientX / window.innerWidth) * 100;
+        const y = (clientY / window.innerHeight) * 100;
+        body.style.setProperty("--pointer-x", x + "%");
+        body.style.setProperty("--pointer-y", y + "%");
+      }
+
+      window.addEventListener("pointermove", function (event) {
+        setPointerVars(event.clientX, event.clientY);
+      }, { passive: true });
+
+      if (parallaxRoot) {
+        const boundsCache = { rect: null };
+
+        function updateBounds() {
+          boundsCache.rect = parallaxRoot.getBoundingClientRect();
+        }
+
+        updateBounds();
+        window.addEventListener("resize", updateBounds);
+
+        parallaxRoot.addEventListener("pointermove", function (event) {
+          if (!boundsCache.rect) updateBounds();
+          const rect = boundsCache.rect;
+          const px = ((event.clientX - rect.left) / rect.width) - 0.5;
+          const py = ((event.clientY - rect.top) / rect.height) - 0.5;
+
+          parallaxRoot.style.transform =
+            "rotateX(" + (-py * 8) + "deg) rotateY(" + (px * 10) + "deg)";
+
+          parallaxLayers.forEach(function (layer) {
+            const depth = Number(layer.getAttribute("data-depth") || 0);
+            const moveX = px * depth;
+            const moveY = py * depth * -0.8;
+            layer.style.setProperty("--mx", moveX + "px");
+            layer.style.setProperty("--my", moveY + "px");
+          });
+        });
+
+        parallaxRoot.addEventListener("pointerleave", function () {
+          parallaxRoot.style.transform = "rotateX(0deg) rotateY(0deg)";
+          parallaxLayers.forEach(function (layer) {
+            layer.style.setProperty("--mx", "0px");
+            layer.style.setProperty("--my", "0px");
+          });
+        });
+      }
+
+      const canvas = document.getElementById("scene");
+      const ctx = canvas.getContext("2d");
+      const particles = [];
+      const pointer = { x: window.innerWidth * 0.5, y: window.innerHeight * 0.4, radius: 160 };
+      const DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+      function resizeCanvas() {
+        canvas.width = Math.floor(window.innerWidth * DPR);
+        canvas.height = Math.floor(window.innerHeight * DPR);
+        canvas.style.width = window.innerWidth + "px";
+        canvas.style.height = window.innerHeight + "px";
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      }
+
+      function createParticles() {
+        particles.length = 0;
+        const count = Math.max(42, Math.min(96, Math.floor(window.innerWidth / 18)));
+        for (let i = 0; i < count; i += 1) {
+          particles.push({
+            x: Math.random() * window.innerWidth,
+            y: Math.random() * window.innerHeight,
+            vx: (Math.random() - 0.5) * 0.35,
+            vy: (Math.random() - 0.5) * 0.35,
+            size: Math.random() * 2.2 + 0.8,
+            hue: Math.random() > 0.45 ? 152 : 190
+          });
+        }
+      }
+
+      function drawBackgroundGlow() {
+        const gradient = ctx.createRadialGradient(
+          pointer.x,
+          pointer.y,
+          0,
+          pointer.x,
+          pointer.y,
+          280
+        );
+        gradient.addColorStop(0, "rgba(142,240,183,0.09)");
+        gradient.addColorStop(0.45, "rgba(119,233,255,0.05)");
+        gradient.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+      }
+
+      function animate() {
+        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+        drawBackgroundGlow();
+
+        for (let i = 0; i < particles.length; i += 1) {
+          const p = particles[i];
+          const dx = pointer.x - p.x;
+          const dy = pointer.y - p.y;
+          const dist = Math.hypot(dx, dy);
+
+          if (dist < pointer.radius) {
+            const force = (pointer.radius - dist) / pointer.radius;
+            const angle = Math.atan2(dy, dx);
+            p.vx -= Math.cos(angle) * force * 0.015;
+            p.vy -= Math.sin(angle) * force * 0.015;
+          }
+
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vx *= 0.992;
+          p.vy *= 0.992;
+
+          if (p.x < -20) p.x = window.innerWidth + 20;
+          if (p.x > window.innerWidth + 20) p.x = -20;
+          if (p.y < -20) p.y = window.innerHeight + 20;
+          if (p.y > window.innerHeight + 20) p.y = -20;
+
+          ctx.beginPath();
+          ctx.fillStyle = p.hue === 152
+            ? "rgba(142,240,183,0.58)"
+            : "rgba(119,233,255,0.5)";
+          ctx.shadowBlur = 14;
+          ctx.shadowColor = p.hue === 152
+            ? "rgba(142,240,183,0.28)"
+            : "rgba(119,233,255,0.25)";
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+
+        for (let i = 0; i < particles.length; i += 1) {
+          for (let j = i + 1; j < particles.length; j += 1) {
+            const a = particles[i];
+            const b = particles[j];
+            const distance = Math.hypot(a.x - b.x, a.y - b.y);
+            if (distance < 120) {
+              const alpha = (1 - distance / 120) * 0.12;
+              ctx.beginPath();
+              ctx.strokeStyle = "rgba(167, 246, 212, " + alpha + ")";
+              ctx.lineWidth = 1;
+              ctx.moveTo(a.x, a.y);
+              ctx.lineTo(b.x, b.y);
+              ctx.stroke();
+            }
+          }
+        }
+
+        requestAnimationFrame(animate);
+      }
+
+      resizeCanvas();
+      createParticles();
+      animate();
+
+      window.addEventListener("resize", function () {
+        resizeCanvas();
+        createParticles();
+      });
+
+      window.addEventListener("pointermove", function (event) {
+        pointer.x = event.clientX;
+        pointer.y = event.clientY;
+      }, { passive: true });
+    })();
+  </script>
+</body>
+</html>
