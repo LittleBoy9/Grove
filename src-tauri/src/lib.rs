@@ -1,7 +1,7 @@
 mod git;
 mod launcher;
 
-use git::{BranchInfo, CommitInfo, RepoStatus, StashEntry, TagInfo, RemoteInfo, SubmoduleInfo, WorktreeInfo, RepoStats};
+use git::{BranchInfo, CommitInfo, RepoStatus, StashEntry, TagInfo, RemoteInfo, SubmoduleInfo, WorktreeInfo, RepoStats, BranchOrigin};
 use launcher::App;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_notification::NotificationExt;
@@ -386,6 +386,13 @@ async fn get_repo_stats(repo_path: String) -> Result<RepoStats, String> {
     git::get_repo_stats(&repo_path)
 }
 
+// --- Branch timeline ---
+
+#[tauri::command]
+async fn get_branch_timeline(repo_path: String) -> Result<Vec<BranchOrigin>, String> {
+    git::get_branch_timeline(&repo_path)
+}
+
 // --- Search log ---
 
 #[tauri::command]
@@ -475,6 +482,7 @@ pub fn run() {
             abort_rebase,
             is_rebasing,
             get_repo_stats,
+            get_branch_timeline,
             search_log,
         ])
         .run(tauri::generate_context!())

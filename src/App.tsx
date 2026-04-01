@@ -108,19 +108,8 @@ export default function App() {
   }, [settings.theme]);
 
   useEffect(() => {
-    function applyColorMode() {
-      const prefersDark =
-        settings.colorMode === "dark" ||
-        (settings.colorMode === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-      document.documentElement.classList.toggle("dark", prefersDark);
-    }
-    applyColorMode();
-    if (settings.colorMode === "system") {
-      const mq = window.matchMedia("(prefers-color-scheme: dark)");
-      mq.addEventListener("change", applyColorMode);
-      return () => mq.removeEventListener("change", applyColorMode);
-    }
-  }, [settings.colorMode]);
+    document.documentElement.classList.add("dark");
+  }, []);
 
   // Validate selectedPath is in repoPaths
   useEffect(() => {
@@ -393,8 +382,12 @@ export default function App() {
 
   const filteredPaths = search.trim()
     ? orderedPaths.filter((p) => {
-        const name = statuses.get(p)?.name ?? p.split("/").pop() ?? "";
-        return name.toLowerCase().includes(search.toLowerCase());
+        const q = search.toLowerCase();
+        const name = (statuses.get(p)?.name ?? p.split("/").pop() ?? "").toLowerCase();
+        // Also match against the last 3 path segments so "api/server" or "projects/web" work
+        const segments = p.split("/").filter(Boolean);
+        const context = segments.slice(-3).join("/").toLowerCase();
+        return name.includes(q) || context.includes(q);
       })
     : orderedPaths;
 

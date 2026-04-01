@@ -21,6 +21,7 @@ export default function FileTreePanel({ repo, onRefresh }: Props) {
   const [diff, setDiff] = useState("");
   const [loadingDiff, setLoadingDiff] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Load file tree when repo changes
   useEffect(() => {
@@ -72,20 +73,26 @@ export default function FileTreePanel({ repo, onRefresh }: Props) {
 
   async function handleStage(path: string) {
     setActionLoading(path);
+    setActionError(null);
     try {
       await api.stageFiles(repo.path, [path]);
       onRefresh();
-    } catch { /* ignore */ } finally {
+    } catch (e) {
+      setActionError(String(e));
+    } finally {
       setActionLoading(null);
     }
   }
 
   async function handleUnstage(path: string) {
     setActionLoading(path);
+    setActionError(null);
     try {
       await api.unstageFiles(repo.path, [path]);
       onRefresh();
-    } catch { /* ignore */ } finally {
+    } catch (e) {
+      setActionError(String(e));
+    } finally {
       setActionLoading(null);
     }
   }
@@ -121,6 +128,14 @@ export default function FileTreePanel({ repo, onRefresh }: Props) {
             )}
           </div>
         </div>
+
+        {/* Action error */}
+        {actionError && (
+          <div className="mx-2 my-1 px-2.5 py-1.5 bg-red-500/10 border border-red-500/20 rounded-lg text-[11px] text-red-400 flex items-center gap-2 shrink-0">
+            <span className="flex-1 truncate">{actionError}</span>
+            <button onClick={() => setActionError(null)} className="text-red-500 hover:text-red-300 shrink-0">✕</button>
+          </div>
+        )}
 
         {/* Tree scroll area */}
         <div className="flex-1 overflow-y-auto py-1">

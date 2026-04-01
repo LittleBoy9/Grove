@@ -24,8 +24,9 @@ import ConflictRow from "./ConflictRow";
 import SubmodulesPanel from "./SubmodulesPanel";
 import WorktreesPanel from "./WorktreesPanel";
 import StatsPanel from "./StatsPanel";
+import BranchTimeline from "./BranchTimeline";
 
-type Tab = "changes" | "history" | "compare" | "stash" | "tags" | "remotes" | "tree" | "submodules" | "worktrees" | "stats";
+type Tab = "changes" | "history" | "compare" | "stash" | "tags" | "remotes" | "tree" | "submodules" | "worktrees" | "stats" | "branches";
 
 interface Props {
   repo: RepoStatus;
@@ -42,7 +43,7 @@ function remoteToWebUrl(url: string): string | null {
   return null;
 }
 
-const VALID_TABS: Tab[] = ["changes", "history", "compare", "stash", "tags", "remotes", "tree", "submodules", "worktrees", "stats"];
+const VALID_TABS: Tab[] = ["changes", "history", "compare", "stash", "tags", "remotes", "tree", "submodules", "worktrees", "stats", "branches"];
 
 function loadTab(repoPath: string): Tab {
   try {
@@ -415,7 +416,7 @@ export default function RepoDetail({ repo, onRefresh }: Props) {
             </Button>
             {prUrl && (
               <button
-                onClick={() => api.openUrl(prUrl)}
+                onClick={() => api.openUrl(prUrl).catch((e) => setError(String(e)))}
                 title="Open pull request in browser"
                 className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-violet-300 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 hover:border-violet-500/40 rounded-lg transition-all"
               >
@@ -510,6 +511,13 @@ export default function RepoDetail({ repo, onRefresh }: Props) {
               ${tab === "stats" ? "bg-white/10 text-white" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"}`}
           >
             Stats
+          </button>
+          <button
+            onClick={() => setTab("branches")}
+            className={`px-3 py-1 text-xs rounded-md transition-colors
+              ${tab === "branches" ? "bg-white/10 text-white" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"}`}
+          >
+            Branches
           </button>
         </div>
       </div>
@@ -742,6 +750,8 @@ export default function RepoDetail({ repo, onRefresh }: Props) {
         {tab === "worktrees" && <WorktreesPanel repoPath={repo.path} />}
 
         {tab === "stats" && <StatsPanel repoPath={repo.path} />}
+
+        {tab === "branches" && <BranchTimeline repoPath={repo.path} />}
       </div>
 
       {fileHistoryPath && (

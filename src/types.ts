@@ -78,3 +78,10 @@ export interface RepoStats {
   authors: AuthorStat[];
   daily_commits: [string, number][]; // [YYYY-MM-DD, count]
 }
+
+export interface BranchOrigin {
+  branch: string;
+  created_from: string | null;
+  created_at: string | null; // "2024-03-15 10:30:00 +0530"
+  commit: string;
+}

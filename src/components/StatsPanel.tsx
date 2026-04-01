@@ -16,6 +16,7 @@ function formatDateShort(dateStr: string): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+
 export default function StatsPanel({ repoPath }: Props) {
   const [stats, setStats] = useState<RepoStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -93,7 +94,6 @@ export default function StatsPanel({ repoPath }: Props) {
           Commit activity — last 30 days
         </p>
         <div className="bg-white/3 border border-white/8 rounded-xl p-4 relative">
-          {/* Tooltip */}
           {tooltip && (
             <div
               className="absolute top-2 z-10 px-2.5 py-1.5 bg-zinc-800 border border-white/10 rounded-lg shadow-xl text-[11px] text-zinc-200 whitespace-nowrap pointer-events-none"
@@ -105,7 +105,7 @@ export default function StatsPanel({ repoPath }: Props) {
           )}
 
           <div className="flex items-end gap-1 h-20">
-            {allDays.map(([date, count], idx) => {
+            {allDays.map(([date, count]) => {
               const height = count === 0 ? 2 : Math.max(6, Math.round((count / maxDaily) * 72));
               const isToday = date === todayKey;
               return (
@@ -134,7 +134,6 @@ export default function StatsPanel({ repoPath }: Props) {
             })}
           </div>
 
-          {/* X-axis labels — show full month+day */}
           <div className="flex justify-between mt-2">
             <span className="text-[10px] text-zinc-600">{formatDateShort(allDays[0][0])}</span>
             <span className="text-[10px] text-zinc-600">{formatDateShort(allDays[14][0])}</span>
@@ -181,6 +180,7 @@ export default function StatsPanel({ repoPath }: Props) {
           </div>
         </div>
       )}
+
     </div>
   );
 }

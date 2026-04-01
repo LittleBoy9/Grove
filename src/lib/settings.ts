@@ -1,6 +1,6 @@
 export type AIProvider = "anthropic" | "openai" | "gemini" | "";
 
-export type ColorMode = "dark" | "system";
+export type ColorMode = "dark";
 
 export interface GroveSettings {
   refreshInterval: number;   // seconds: 0 | 5 | 10 | 30 | 60

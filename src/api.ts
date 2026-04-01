@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { RepoStatus, BranchInfo, CommitInfo, GraphCommitInfo, StashEntry, TagInfo, RemoteInfo, SubmoduleInfo, WorktreeInfo, RepoStats } from "./types";
+import { RepoStatus, BranchInfo, CommitInfo, GraphCommitInfo, StashEntry, TagInfo, RemoteInfo, SubmoduleInfo, WorktreeInfo, RepoStats, BranchOrigin } from "./types";
 
 export const api = {
   // Repo discovery
@@ -168,6 +168,10 @@ export const api = {
   // Repo stats
   getRepoStats: (repoPath: string): Promise<RepoStats> =>
     invoke("get_repo_stats", { repoPath }),
+
+  // Branch timeline
+  getBranchTimeline: (repoPath: string): Promise<BranchOrigin[]> =>
+    invoke("get_branch_timeline", { repoPath }),
 
   // Search log
   searchLog: (repoPath: string, query: string, author: string, after: string, before: string, limit: number): Promise<CommitInfo[]> =>

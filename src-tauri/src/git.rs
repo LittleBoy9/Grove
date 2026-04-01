@@ -870,6 +870,54 @@ pub fn get_repo_stats(repo_path: &str) -> Result<RepoStats, String> {
     })
 }
 
+// --- Branch timeline ---
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BranchOrigin {
+    pub branch: String,
+    pub created_from: Option<String>,
+    pub created_at: Option<String>, // e.g. "2024-03-15 10:30:00 +0530"
+    pub commit: String,
+}
+
+pub fn get_branch_timeline(repo_path: &str) -> Result<Vec<BranchOrigin>, String> {
+    let branch_output = run_git(repo_path, &["branch", "--format=%(refname:short)"])?;
+    let mut result: Vec<BranchOrigin> = Vec::new();
+
+    for branch in branch_output.lines() {
+        let branch = branch.trim();
+        if branch.is_empty() { continue; }
+
+        let reflog = run_git(
+            repo_path,
+            &["reflog", "show", "--date=iso", &format!("refs/heads/{}", branch)],
+        );
+        if let Ok(log) = reflog {
+            if let Some(last_line) = log.lines().last() {
+                // "abc1234 refs/heads/feat@{2024-03-15 10:30:00 +0530}: branch: Created from main"
+                let commit = last_line.split_whitespace().next().unwrap_or("").to_string();
+
+                let created_at = if let (Some(s), Some(e)) = (last_line.find("@{"), last_line.find('}')) {
+                    Some(last_line[s + 2..e].to_string())
+                } else {
+                    None
+                };
+
+                let created_from = last_line
+                    .find("Created from ")
+                    .map(|p| last_line[p + "Created from ".len()..].trim().to_string())
+                    .filter(|s| s != "HEAD" && !s.is_empty());
+
+                result.push(BranchOrigin { branch: branch.to_string(), created_from, created_at, commit });
+            }
+        }
+    }
+
+    // Sort newest first
+    result.sort_by(|a, b| b.created_at.as_deref().unwrap_or("").cmp(a.created_at.as_deref().unwrap_or("")));
+    Ok(result)
+}
+
 // --- Search log ---
 
 pub fn search_log(repo_path: &str, query: &str, author: &str, after: &str, before: &str, limit: usize) -> Result<Vec<CommitInfo>, String> {

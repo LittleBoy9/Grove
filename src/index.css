@@ -163,6 +163,7 @@
   --color-zinc-300: #cdd6f4;
 }
 
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

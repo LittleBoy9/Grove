@@ -116,10 +116,14 @@ export default function GitignoreEditor({ repoPath, repoName, onClose }: Props) 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
+      if ((e.metaKey || e.ctrlKey) && e.key === "/") {
+        e.preventDefault();
+        toggleComment();
+      }
     }
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
-  }, [onClose]);
+  }, [onClose]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const syncScroll = useCallback(() => {
     if (textareaRef.current && highlightRef.current) {
@@ -139,6 +143,43 @@ export default function GitignoreEditor({ repoPath, repoName, onClose }: Props) 
     } finally {
       setSaving(false);
     }
+  }
+
+  function toggleComment() {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const selStart = textarea.selectionStart;
+    const selEnd = textarea.selectionEnd;
+    const lines = content.split("\n");
+
+    // Determine affected line range
+    const startLine = content.substring(0, selStart).split("\n").length - 1;
+    const endLine = content.substring(0, selEnd).split("\n").length - 1;
+
+    const affected = lines.slice(startLine, endLine + 1).filter((l) => l.trim());
+    const allCommented = affected.length > 0 && affected.every((l) => l.trimStart().startsWith("#"));
+
+    const newLines = lines.map((line, i) => {
+      if (i < startLine || i > endLine || !line.trim()) return line;
+      if (allCommented) {
+        return line.replace(/^(\s*)#\s?/, "$1");
+      } else {
+        return line.startsWith("#") ? line : "# " + line;
+      }
+    });
+
+    const newContent = newLines.join("\n");
+    setContent(newContent);
+
+    // Restore cursor roughly to same position
+    requestAnimationFrame(() => {
+      if (!textareaRef.current) return;
+      const delta = allCommented ? -2 : 2;
+      const newPos = Math.max(0, selStart + delta);
+      textareaRef.current.selectionStart = newPos;
+      textareaRef.current.selectionEnd = Math.max(newPos, selEnd + delta * (endLine - startLine + 1));
+      textareaRef.current.focus();
+    });
   }
 
   function addPattern(patterns: string[]) {
@@ -306,6 +347,14 @@ export default function GitignoreEditor({ repoPath, repoName, onClose }: Props) 
             )}
           </div>
           <div className="flex gap-2">
+            <button
+              onClick={toggleComment}
+              title="Toggle comment (⌘/)"
+              className="px-3 py-1.5 text-xs text-zinc-500 hover:text-zinc-200 border border-white/8 rounded-lg hover:bg-white/5 transition-colors flex items-center gap-1.5"
+            >
+              <span className="font-mono text-zinc-600">#</span> Toggle comment
+              <span className="text-[10px] text-zinc-700 ml-0.5">⌘/</span>
+            </button>
             <button
               onClick={onClose}
               className="px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 border border-white/10 rounded-lg hover:bg-white/5 transition-colors"
