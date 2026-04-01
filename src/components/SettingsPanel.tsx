@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { GroveSettings, saveSettings } from "../lib/settings";
+import { GroveSettings, saveSettings, ColorMode } from "../lib/settings";
 import { AI_PROVIDERS, AI_MODELS } from "../lib/ai";
 import { api } from "../api";
 
@@ -154,6 +154,26 @@ export default function SettingsPanel({ settings, onSave, onClose }: Props) {
                   {draft.theme === t.id && (
                     <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-white/70 shadow-sm" />
                   )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Color mode */}
+          <div className="mt-3">
+            <p className="text-[11px] text-zinc-500 mb-1.5 pl-0.5">Color mode</p>
+            <div className="flex gap-1.5">
+              {(["dark", "system"] as ColorMode[]).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setDraft((d) => ({ ...d, colorMode: mode }))}
+                  className={`flex-1 py-1.5 text-xs rounded-lg border transition-colors
+                    ${draft.colorMode === mode
+                      ? "bg-blue-500/20 border-blue-500/40 text-blue-300"
+                      : "bg-white/3 border-white/5 text-zinc-500 hover:text-zinc-300 hover:bg-white/8"
+                    }`}
+                >
+                  {mode === "dark" ? "Always dark" : "System (auto)"}
                 </button>
               ))}
             </div>

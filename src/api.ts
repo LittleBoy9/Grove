@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { RepoStatus, BranchInfo, CommitInfo, GraphCommitInfo, StashEntry, TagInfo, RemoteInfo } from "./types";
+import { RepoStatus, BranchInfo, CommitInfo, GraphCommitInfo, StashEntry, TagInfo, RemoteInfo, SubmoduleInfo, WorktreeInfo, RepoStats } from "./types";
 
 export const api = {
   // Repo discovery
@@ -138,4 +138,38 @@ export const api = {
     invoke("open_in_finder", { repoPath }),
   openUrl: (url: string): Promise<void> =>
     invoke("open_url", { url }),
+
+  // Stash diff
+  stashDiff: (repoPath: string, index: number): Promise<string> =>
+    invoke("stash_diff", { repoPath, index }),
+
+  // Submodules
+  listSubmodules: (repoPath: string): Promise<SubmoduleInfo[]> =>
+    invoke("list_submodules", { repoPath }),
+  updateSubmodules: (repoPath: string): Promise<string> =>
+    invoke("update_submodules", { repoPath }),
+
+  // Worktrees
+  listWorktrees: (repoPath: string): Promise<WorktreeInfo[]> =>
+    invoke("list_worktrees", { repoPath }),
+  addWorktree: (repoPath: string, path: string, branch: string, createBranch: boolean): Promise<string> =>
+    invoke("add_worktree", { repoPath, path, branch, createBranch }),
+  removeWorktree: (repoPath: string, wtPath: string): Promise<string> =>
+    invoke("remove_worktree", { repoPath, wtPath }),
+
+  // Interactive rebase
+  interactiveRebase: (repoPath: string, base: string, instructions: string): Promise<string> =>
+    invoke("interactive_rebase", { repoPath, base, instructions }),
+  abortRebase: (repoPath: string): Promise<string> =>
+    invoke("abort_rebase", { repoPath }),
+  isRebasing: (repoPath: string): Promise<boolean> =>
+    invoke("is_rebasing", { repoPath }),
+
+  // Repo stats
+  getRepoStats: (repoPath: string): Promise<RepoStats> =>
+    invoke("get_repo_stats", { repoPath }),
+
+  // Search log
+  searchLog: (repoPath: string, query: string, author: string, after: string, before: string, limit: number): Promise<CommitInfo[]> =>
+    invoke("search_log", { repoPath, query, author, after, before, limit }),
 };

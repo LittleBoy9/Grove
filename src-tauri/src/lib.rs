@@ -1,7 +1,7 @@
 mod git;
 mod launcher;
 
-use git::{BranchInfo, CommitInfo, RepoStatus, StashEntry, TagInfo, RemoteInfo};
+use git::{BranchInfo, CommitInfo, RepoStatus, StashEntry, TagInfo, RemoteInfo, SubmoduleInfo, WorktreeInfo, RepoStats};
 use launcher::App;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_notification::NotificationExt;
@@ -326,6 +326,80 @@ async fn open_url(url: String) -> Result<(), String> {
     launcher::open_url(&url)
 }
 
+// --- Stash diff ---
+
+#[tauri::command]
+async fn stash_diff(repo_path: String, index: usize) -> Result<String, String> {
+    git::stash_diff(&repo_path, index)
+}
+
+// --- Submodules ---
+
+#[tauri::command]
+async fn list_submodules(repo_path: String) -> Result<Vec<SubmoduleInfo>, String> {
+    git::list_submodules(&repo_path)
+}
+
+#[tauri::command]
+async fn update_submodules(repo_path: String) -> Result<String, String> {
+    git::update_submodules(&repo_path)
+}
+
+// --- Worktrees ---
+
+#[tauri::command]
+async fn list_worktrees(repo_path: String) -> Result<Vec<WorktreeInfo>, String> {
+    git::list_worktrees(&repo_path)
+}
+
+#[tauri::command]
+async fn add_worktree(repo_path: String, path: String, branch: String, create_branch: bool) -> Result<String, String> {
+    git::add_worktree(&repo_path, &path, &branch, create_branch)
+}
+
+#[tauri::command]
+async fn remove_worktree(repo_path: String, wt_path: String) -> Result<String, String> {
+    git::remove_worktree(&repo_path, &wt_path)
+}
+
+// --- Interactive rebase ---
+
+#[tauri::command]
+async fn interactive_rebase(repo_path: String, base: String, instructions: String) -> Result<String, String> {
+    git::interactive_rebase(&repo_path, &base, &instructions)
+}
+
+#[tauri::command]
+async fn abort_rebase(repo_path: String) -> Result<String, String> {
+    git::abort_rebase(&repo_path)
+}
+
+#[tauri::command]
+async fn is_rebasing(repo_path: String) -> bool {
+    git::is_rebasing(&repo_path)
+}
+
+// --- Repo stats ---
+
+#[tauri::command]
+async fn get_repo_stats(repo_path: String) -> Result<RepoStats, String> {
+    git::get_repo_stats(&repo_path)
+}
+
+// --- Search log ---
+
+#[tauri::command]
+async fn search_log(
+    repo_path: String,
+    query: String,
+    author: String,
+    after: String,
+    before: String,
+    limit: usize,
+) -> Result<Vec<CommitInfo>, String> {
+    git::search_log(&repo_path, &query, &author, &after, &before, limit)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -391,6 +465,17 @@ pub fn run() {
             open_in_finder,
             open_url,
             send_notification,
+            stash_diff,
+            list_submodules,
+            update_submodules,
+            list_worktrees,
+            add_worktree,
+            remove_worktree,
+            interactive_rebase,
+            abort_rebase,
+            is_rebasing,
+            get_repo_stats,
+            search_log,
         ])
         .run(tauri::generate_context!())
         .expect("error while running grove");

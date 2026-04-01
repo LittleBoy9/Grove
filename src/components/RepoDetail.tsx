@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { RepoStatus, FileChange } from "../types";
+import { RepoStatus } from "../types";
 import { api } from "../api";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
@@ -19,129 +19,17 @@ import { timeAgo } from "../lib/time";
 import { notify } from "../lib/notify";
 import { generateCommitMessage } from "../lib/ai";
 import { loadSettings } from "../lib/settings";
+import FileRow from "./FileRow";
+import ConflictRow from "./ConflictRow";
+import SubmodulesPanel from "./SubmodulesPanel";
+import WorktreesPanel from "./WorktreesPanel";
+import StatsPanel from "./StatsPanel";
 
-type Tab = "changes" | "history" | "compare" | "stash" | "tags" | "remotes" | "tree";
+type Tab = "changes" | "history" | "compare" | "stash" | "tags" | "remotes" | "tree" | "submodules" | "worktrees" | "stats";
 
 interface Props {
   repo: RepoStatus;
   onRefresh: () => void;
-}
-
-function FileRow({
-  file,
-  selected,
-  checked,
-  onSelect,
-  onCheck,
-  onDiscard,
-  onHistory,
-}: {
-  file: FileChange;
-  selected: boolean;
-  checked: boolean;
-  onSelect: () => void;
-  onCheck: (v: boolean) => void;
-  onDiscard?: () => void;
-  onHistory?: () => void;
-}) {
-  const colorMap: Record<string, string> = {
-    modified: "text-yellow-400", added: "text-green-400", deleted: "text-red-400",
-    renamed: "text-blue-400", conflict: "text-red-500", untracked: "text-zinc-400",
-    changed: "text-yellow-400", copied: "text-blue-400",
-  };
-  const labelMap: Record<string, string> = {
-    modified: "M", added: "A", deleted: "D", renamed: "R",
-    conflict: "!", untracked: "?", changed: "~", copied: "C",
-  };
-
-  return (
-    <div
-      onClick={onSelect}
-      className={`flex items-center gap-2 px-3 py-1.5 cursor-pointer rounded-md group/row transition-colors
-        ${selected ? "bg-white/10" : "hover:bg-white/5"}`}
-    >
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => { e.stopPropagation(); onCheck(e.target.checked); }}
-        onClick={(e) => e.stopPropagation()}
-        className="accent-green-500 shrink-0"
-      />
-      <span className={`text-[11px] font-bold w-4 shrink-0 ${colorMap[file.status] || "text-zinc-400"}`}>
-        {labelMap[file.status] || "~"}
-      </span>
-      <span className="text-xs text-zinc-300 truncate flex-1 font-mono">{file.path}</span>
-      {onHistory && (
-        <button
-          onClick={(e) => { e.stopPropagation(); onHistory(); }}
-          className="opacity-0 group-hover/row:opacity-100 p-0.5 rounded text-zinc-600 hover:text-blue-400 hover:bg-blue-500/10 transition-all shrink-0"
-          title="File history"
-        >
-          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="9" /><path strokeLinecap="round" d="M12 7v5l3 3" />
-          </svg>
-        </button>
-      )}
-      {onDiscard && (
-        <button
-          onClick={(e) => { e.stopPropagation(); onDiscard(); }}
-          className="opacity-0 group-hover/row:opacity-100 p-0.5 rounded text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition-all shrink-0"
-          title="Discard changes"
-        >
-          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      )}
-    </div>
-  );
-}
-
-function ConflictRow({
-  filePath,
-  resolving,
-  onOurs,
-  onTheirs,
-  onSelect,
-  selected,
-}: {
-  filePath: string;
-  resolving: boolean;
-  onOurs: () => void;
-  onTheirs: () => void;
-  onSelect: () => void;
-  selected: boolean;
-}) {
-  return (
-    <div
-      onClick={onSelect}
-      className={`flex items-center gap-2 px-3 py-1.5 cursor-pointer rounded-md transition-colors
-        ${selected ? "bg-red-500/10" : "hover:bg-red-500/5"}`}
-    >
-      <span className="text-[11px] font-bold w-4 shrink-0 text-red-500">!</span>
-      <span className="text-xs text-red-300 truncate flex-1 font-mono">{filePath}</span>
-      {resolving ? (
-        <span className="text-[10px] text-zinc-500 shrink-0">resolving…</span>
-      ) : (
-        <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-          <button
-            onClick={onOurs}
-            className="px-1.5 py-0.5 text-[10px] font-medium bg-blue-500/15 text-blue-300 hover:bg-blue-500/25 border border-blue-500/20 rounded transition-colors"
-            title="Use our version (git checkout --ours)"
-          >
-            Ours
-          </button>
-          <button
-            onClick={onTheirs}
-            className="px-1.5 py-0.5 text-[10px] font-medium bg-purple-500/15 text-purple-300 hover:bg-purple-500/25 border border-purple-500/20 rounded transition-colors"
-            title="Use their version (git checkout --theirs)"
-          >
-            Theirs
-          </button>
-        </div>
-      )}
-    </div>
-  );
 }
 
 function remoteToWebUrl(url: string): string | null {
@@ -154,7 +42,7 @@ function remoteToWebUrl(url: string): string | null {
   return null;
 }
 
-const VALID_TABS: Tab[] = ["changes", "history", "compare", "stash", "tags", "remotes", "tree"];
+const VALID_TABS: Tab[] = ["changes", "history", "compare", "stash", "tags", "remotes", "tree", "submodules", "worktrees", "stats"];
 
 function loadTab(repoPath: string): Tab {
   try {
@@ -180,6 +68,9 @@ export default function RepoDetail({ repo, onRefresh }: Props) {
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [prUrl, setPrUrl] = useState<string | null>(null);
+  const [diffLoading, setDiffLoading] = useState(false);
+  const [hasSubmodules, setHasSubmodules] = useState(false);
+  const [hasWorktrees, setHasWorktrees] = useState(false);
   const forcePushRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -202,6 +93,12 @@ export default function RepoDetail({ repo, onRefresh }: Props) {
     setCheckedUnstaged(new Set());
     setError(null);
     setAmending(false);
+  }, [repo.path]);
+
+  // Detect submodules + worktrees for conditional tabs
+  useEffect(() => {
+    api.listSubmodules(repo.path).then((s) => setHasSubmodules(s.length > 0)).catch(() => {});
+    api.listWorktrees(repo.path).then((w) => setHasWorktrees(w.length > 1)).catch(() => {});
   }, [repo.path]);
 
   // Persist tab on change
@@ -265,10 +162,12 @@ export default function RepoDetail({ repo, onRefresh }: Props) {
   }, []);
 
   useEffect(() => {
-    if (!selectedFile) return;
+    if (!selectedFile) { setDiff(""); return; }
+    setDiffLoading(true);
     api.getFileDiff(repo.path, selectedFile.path, selectedFile.staged)
       .then(setDiff)
-      .catch(() => setDiff(""));
+      .catch(() => setDiff(""))
+      .finally(() => setDiffLoading(false));
   }, [selectedFile]);
 
   // Prefill commit message when amending
@@ -568,7 +467,7 @@ export default function RepoDetail({ repo, onRefresh }: Props) {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-1 mt-3">
+        <div className="flex flex-wrap gap-1 mt-3">
           {(["changes", "history", "compare", "stash", "tags", "remotes", "tree"] as Tab[]).map((t) => (
             <button
               key={t}
@@ -581,15 +480,37 @@ export default function RepoDetail({ repo, onRefresh }: Props) {
             >
               {t === "changes" && totalChanges > 0
                 ? `Changes (${totalChanges})`
-                : t === "tags"
-                  ? "Tags"
-                  : t === "remotes"
-                    ? "Remotes"
-                    : t === "tree"
-                      ? "Tree"
-                      : t.charAt(0).toUpperCase() + t.slice(1)}
+                : t === "tags" ? "Tags"
+                : t === "remotes" ? "Remotes"
+                : t === "tree" ? "Tree"
+                : t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
+          {hasSubmodules && (
+            <button
+              onClick={() => setTab("submodules")}
+              className={`px-3 py-1 text-xs rounded-md transition-colors
+                ${tab === "submodules" ? "bg-white/10 text-white" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"}`}
+            >
+              Submodules
+            </button>
+          )}
+          {hasWorktrees && (
+            <button
+              onClick={() => setTab("worktrees")}
+              className={`px-3 py-1 text-xs rounded-md transition-colors
+                ${tab === "worktrees" ? "bg-white/10 text-white" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"}`}
+            >
+              Worktrees
+            </button>
+          )}
+          <button
+            onClick={() => setTab("stats")}
+            className={`px-3 py-1 text-xs rounded-md transition-colors
+              ${tab === "stats" ? "bg-white/10 text-white" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"}`}
+          >
+            Stats
+          </button>
         </div>
       </div>
 
@@ -775,7 +696,23 @@ export default function RepoDetail({ repo, onRefresh }: Props) {
                       </span>
                     </div>
                     <div className="flex-1 overflow-auto">
-                      <DiffViewer diff={diff} />
+                      {diffLoading ? (
+                        <div className="p-4 space-y-1.5 animate-pulse">
+                          {[...Array(12)].map((_, i) => (
+                            <div
+                              key={i}
+                              className={`h-4 rounded ${
+                                i % 5 === 0 ? "bg-green-900/30 w-4/5" :
+                                i % 5 === 2 ? "bg-red-900/25 w-3/5" :
+                                i % 5 === 4 ? "bg-zinc-700/40 w-1/4" :
+                                "bg-zinc-800/60 w-full"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <DiffViewer diff={diff} />
+                      )}
                     </div>
                   </>
                 ) : (
@@ -799,6 +736,12 @@ export default function RepoDetail({ repo, onRefresh }: Props) {
         {tab === "remotes" && <RemotesPanel repoPath={repo.path} />}
 
         {tab === "tree" && <FileTreePanel repo={repo} onRefresh={onRefresh} />}
+
+        {tab === "submodules" && <SubmodulesPanel repoPath={repo.path} />}
+
+        {tab === "worktrees" && <WorktreesPanel repoPath={repo.path} />}
+
+        {tab === "stats" && <StatsPanel repoPath={repo.path} />}
       </div>
 
       {fileHistoryPath && (

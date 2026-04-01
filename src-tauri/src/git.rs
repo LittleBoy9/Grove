@@ -74,6 +74,52 @@ fn run_git(repo_path: &str, args: &[&str]) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
+fn humanize_git_error(raw: &str) -> String {
+    if raw.contains("could not read Username")
+        || raw.contains("Authentication failed")
+        || raw.contains("Invalid username or password")
+        || raw.contains("could not read Password")
+    {
+        return "Authentication failed — check your credentials or access token.".to_string();
+    }
+    if raw.contains("Permission denied (publickey)") || raw.contains("Permission denied (publickey,") {
+        return "SSH key rejected — ensure your SSH key is added to the remote host.".to_string();
+    }
+    if raw.contains("Could not resolve host") || raw.contains("Connection refused") || raw.contains("Network is unreachable") {
+        return "Network error — check your internet connection.".to_string();
+    }
+    if raw.contains("Repository not found") || raw.contains("repository not found") {
+        return "Repository not found on remote — check the URL and your access.".to_string();
+    }
+    if (raw.contains("failed to push some refs") || raw.contains("Updates were rejected"))
+        && !raw.contains("set-upstream")
+    {
+        return "Push rejected — the remote has changes not in your local branch. Pull first.".to_string();
+    }
+    if raw.contains("does not appear to be a git repository") {
+        return "Remote not found — check your remote URL with 'git remote -v'.".to_string();
+    }
+    if raw.contains("src refspec") && raw.contains("does not match any") {
+        return "Branch does not exist on remote yet. Push with upstream to publish it.".to_string();
+    }
+    if raw.contains("nothing to commit") {
+        return "Nothing to commit — the working tree is already clean.".to_string();
+    }
+    if raw.contains("CONFLICT") && (raw.contains("Merge conflict") || raw.contains("content:")) {
+        return "Merge conflict — resolve the conflicts and commit.".to_string();
+    }
+    if raw.contains("not a git repository") {
+        return "Not a git repository.".to_string();
+    }
+    if raw.contains("already exists") && raw.contains("branch") {
+        return "Branch already exists — choose a different name.".to_string();
+    }
+    if raw.contains("unable to access") && raw.contains("SSL") {
+        return "SSL error — check your network or git SSL config.".to_string();
+    }
+    raw.to_string()
+}
+
 fn run_git_checked(repo_path: &str, args: &[&str]) -> Result<String, String> {
     let output = Command::new("git")
         .args(args)
@@ -85,7 +131,8 @@ fn run_git_checked(repo_path: &str, args: &[&str]) -> Result<String, String> {
     if output.status.success() {
         Ok(stdout)
     } else {
-        Err(if stderr.is_empty() { stdout } else { stderr })
+        let raw = if stderr.is_empty() { stdout } else { stderr };
+        Err(humanize_git_error(&raw))
     }
 }
 
@@ -631,4 +678,236 @@ pub fn read_file_tree(repo_path: &str) -> Result<Vec<String>, String> {
         }
     }
     Ok(paths.into_iter().collect())
+}
+
+// --- Stash diff ---
+
+pub fn stash_diff(repo_path: &str, index: usize) -> Result<String, String> {
+    let stash_ref = format!("stash@{{{}}}", index);
+    run_git_checked(repo_path, &["stash", "show", "-p", "--stat", &stash_ref])
+}
+
+// --- Submodules ---
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SubmoduleInfo {
+    pub path: String,
+    pub name: String,
+    pub commit: String,
+    pub status: String, // "clean" | "modified" | "uninitialized" | "conflict"
+}
+
+pub fn list_submodules(repo_path: &str) -> Result<Vec<SubmoduleInfo>, String> {
+    let output = run_git(repo_path, &["submodule", "status"])?;
+    let mut subs = Vec::new();
+    for line in output.lines() {
+        if line.is_empty() { continue; }
+        let status_char = line.chars().next().unwrap_or(' ');
+        let rest = line[1..].trim();
+        let mut parts = rest.splitn(2, ' ');
+        let commit = parts.next().unwrap_or("").to_string();
+        let path_part = parts.next().unwrap_or("");
+        let path = path_part.split('(').next().unwrap_or(path_part).trim().to_string();
+        let name = path.split('/').last().unwrap_or(&path).to_string();
+        let status = match status_char {
+            '+' => "modified",
+            '-' => "uninitialized",
+            'U' => "conflict",
+            _ => "clean",
+        }.to_string();
+        subs.push(SubmoduleInfo { path, name, commit, status });
+    }
+    Ok(subs)
+}
+
+pub fn update_submodules(repo_path: &str) -> Result<String, String> {
+    run_git_checked(repo_path, &["submodule", "update", "--init", "--recursive"])
+}
+
+// --- Worktrees ---
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct WorktreeInfo {
+    pub path: String,
+    pub branch: String,
+    pub commit: String,
+    pub is_main: bool,
+    pub is_locked: bool,
+}
+
+pub fn list_worktrees(repo_path: &str) -> Result<Vec<WorktreeInfo>, String> {
+    let output = run_git_checked(repo_path, &["worktree", "list", "--porcelain"])?;
+    let mut worktrees: Vec<WorktreeInfo> = Vec::new();
+    let mut path = String::new();
+    let mut commit = String::new();
+    let mut branch = String::new();
+    let mut is_locked = false;
+
+    for line in output.lines() {
+        if line.starts_with("worktree ") {
+            if !path.is_empty() {
+                let is_main = worktrees.is_empty();
+                worktrees.push(WorktreeInfo { path: path.clone(), branch: branch.clone(), commit: commit.clone(), is_main, is_locked });
+            }
+            path = line[9..].to_string();
+            commit = String::new();
+            branch = String::new();
+            is_locked = false;
+        } else if line.starts_with("HEAD ") {
+            commit = line[5..].chars().take(7).collect();
+        } else if line.starts_with("branch ") {
+            branch = line[7..].trim_start_matches("refs/heads/").to_string();
+        } else if line == "detached" {
+            branch = "(detached)".to_string();
+        } else if line.starts_with("locked") {
+            is_locked = true;
+        }
+    }
+    if !path.is_empty() {
+        let is_main = worktrees.is_empty();
+        worktrees.push(WorktreeInfo { path, branch, commit, is_main, is_locked });
+    }
+    Ok(worktrees)
+}
+
+pub fn add_worktree(repo_path: &str, path: &str, branch: &str, create_branch: bool) -> Result<String, String> {
+    if create_branch {
+        run_git_checked(repo_path, &["worktree", "add", "-b", branch, path])
+    } else {
+        run_git_checked(repo_path, &["worktree", "add", path, branch])
+    }
+}
+
+pub fn remove_worktree(repo_path: &str, wt_path: &str) -> Result<String, String> {
+    run_git_checked(repo_path, &["worktree", "remove", wt_path])
+}
+
+// --- Interactive rebase ---
+
+pub fn interactive_rebase(repo_path: &str, base: &str, instructions: &str) -> Result<String, String> {
+    use std::os::unix::fs::PermissionsExt;
+
+    let todo_path = std::env::temp_dir().join("grove_rebase_todo.txt");
+    let editor_path = std::env::temp_dir().join("grove_rebase_editor.sh");
+
+    std::fs::write(&todo_path, instructions).map_err(|e| e.to_string())?;
+    let script = format!("#!/bin/sh\ncp \"{}\" \"$1\"\n", todo_path.display());
+    std::fs::write(&editor_path, &script).map_err(|e| e.to_string())?;
+    std::fs::set_permissions(&editor_path, std::fs::Permissions::from_mode(0o755))
+        .map_err(|e| e.to_string())?;
+
+    let output = Command::new("git")
+        .args(["rebase", "-i", base])
+        .current_dir(repo_path)
+        .env("GIT_SEQUENCE_EDITOR", &editor_path)
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+
+    if output.status.success() {
+        Ok("Rebase completed successfully.".to_string())
+    } else {
+        let raw = if stderr.is_empty() { stdout } else { stderr };
+        Err(humanize_git_error(&raw))
+    }
+}
+
+pub fn abort_rebase(repo_path: &str) -> Result<String, String> {
+    run_git_checked(repo_path, &["rebase", "--abort"])
+}
+
+pub fn is_rebasing(repo_path: &str) -> bool {
+    let p = Path::new(repo_path);
+    p.join(".git/rebase-merge").exists() || p.join(".git/rebase-apply").exists()
+}
+
+// --- Repo stats ---
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AuthorStat {
+    pub name: String,
+    pub commits: usize,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RepoStats {
+    pub total_commits: usize,
+    pub authors: Vec<AuthorStat>,
+    pub daily_commits: Vec<(String, usize)>, // (YYYY-MM-DD, count) last 30 days
+}
+
+pub fn get_repo_stats(repo_path: &str) -> Result<RepoStats, String> {
+    let author_output = run_git(repo_path, &["shortlog", "-sn", "--no-merges", "--all"])?;
+    let mut authors: Vec<AuthorStat> = Vec::new();
+    let mut total_commits: usize = 0;
+    for line in author_output.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() { continue; }
+        let parts: Vec<&str> = trimmed.splitn(2, '\t').collect();
+        if parts.len() == 2 {
+            let count: usize = parts[0].trim().parse().unwrap_or(0);
+            total_commits += count;
+            authors.push(AuthorStat { name: parts[1].trim().to_string(), commits: count });
+        }
+    }
+
+    let date_output = run_git(repo_path, &["log", "--all", "--format=%cd", "--date=short", "--no-merges", "--after=30 days ago"])?;
+    let mut date_map: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
+    for line in date_output.lines() {
+        let date = line.trim().to_string();
+        if !date.is_empty() {
+            *date_map.entry(date).or_insert(0) += 1;
+        }
+    }
+    let daily_commits: Vec<(String, usize)> = date_map.into_iter().collect();
+
+    Ok(RepoStats {
+        total_commits,
+        authors: authors.into_iter().take(10).collect(),
+        daily_commits,
+    })
+}
+
+// --- Search log ---
+
+pub fn search_log(repo_path: &str, query: &str, author: &str, after: &str, before: &str, limit: usize) -> Result<Vec<CommitInfo>, String> {
+    let mut args = vec!["log", "--format=%H%x1f%h%x1f%s%x1f%an%x1f%ct"];
+    let limit_str = limit.to_string();
+    args.push("-n");
+    args.push(&limit_str);
+    if !query.is_empty() {
+        args.push("--grep");
+        args.push(query);
+        args.push("--regexp-ignore-case");
+    }
+    if !author.is_empty() {
+        args.push("--author");
+        args.push(author);
+    }
+    if !after.is_empty() {
+        args.push("--after");
+        args.push(after);
+    }
+    if !before.is_empty() {
+        args.push("--before");
+        args.push(before);
+    }
+
+    let output = run_git(repo_path, &args)?;
+    let mut commits = Vec::new();
+    for line in output.lines() {
+        if line.is_empty() { continue; }
+        let parts: Vec<&str> = line.splitn(5, '\x1f').collect();
+        if parts.len() < 5 { continue; }
+        commits.push(CommitInfo {
+            hash: parts[0].to_string(),
+            short_hash: parts[1].to_string(),
+            message: parts[2].to_string(),
+            author: parts[3].to_string(),
+            timestamp: parts[4].parse().unwrap_or(0),
+        });
+    }
+    Ok(commits)
 }

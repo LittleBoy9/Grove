@@ -102,7 +102,8 @@ function GraphRow({
     <div
       onClick={() => !menuOpen && onSelect(commit)}
       className={`flex items-stretch cursor-pointer border-b border-white/4 transition-colors group relative select-none
-        ${selected ? "bg-white/10" : "hover:bg-white/5"}`}
+        ${selected ? "bg-white/10" : "hover:bg-white/5"}
+        ${menuOpen ? "z-10" : ""}`}
       style={{ height: ROW_H }}
     >
       {/* Graph SVG column */}

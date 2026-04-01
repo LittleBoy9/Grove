@@ -1,5 +1,7 @@
 export type AIProvider = "anthropic" | "openai" | "gemini" | "";
 
+export type ColorMode = "dark" | "system";
+
 export interface GroveSettings {
   refreshInterval: number;   // seconds: 0 | 5 | 10 | 30 | 60
   scanDepth: number;         // 2–6
@@ -10,6 +12,7 @@ export interface GroveSettings {
   aiModel: string;
   aiKey: string;
   theme: string;
+  colorMode: ColorMode;
 }
 
 const DEFAULTS: GroveSettings = {
@@ -22,6 +25,7 @@ const DEFAULTS: GroveSettings = {
   aiModel: "",
   aiKey: "",
   theme: "grove",
+  colorMode: "dark",
 };
 
 const KEY = "grove_settings";

@@ -3,6 +3,7 @@ import { CommitInfo, GraphCommitInfo } from "../types";
 import { api } from "../api";
 import DiffViewer from "./DiffViewer";
 import GitGraph from "./GitGraph";
+import InteractiveRebase from "./InteractiveRebase";
 import { timeAgo } from "../lib/time";
 
 type ViewMode = "list" | "graph";
@@ -24,6 +25,7 @@ export default function CommitHistory({ repoPath, onRefresh }: Props) {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [panelWidth, setPanelWidth] = useState(320);
+  const [showRebase, setShowRebase] = useState(false);
   const dragging = useRef(false);
   const dragStartX = useRef(0);
   const dragStartWidth = useRef(0);
@@ -192,10 +194,18 @@ export default function CommitHistory({ repoPath, onRefresh }: Props) {
                 {search.trim() ? `${filteredCount}/${count}` : `${count} commits`}
               </span>
 
+              <button
+                onClick={() => commits.length > 0 && setShowRebase(true)}
+                disabled={commits.length === 0}
+                title="Interactive rebase"
+                className="ml-auto px-2 py-1 text-[11px] text-zinc-500 hover:text-orange-300 hover:bg-orange-500/10 border border-white/8 hover:border-orange-500/20 rounded-md transition-colors disabled:opacity-30 shrink-0"
+              >
+                Rebase…
+              </button>
               <select
                 value={limit}
                 onChange={(e) => setLimit(Number(e.target.value))}
-                className="ml-auto text-xs bg-white/5 border border-white/10 rounded px-1.5 py-0.5 text-zinc-400 outline-none"
+                className="text-xs bg-white/5 border border-white/10 rounded px-1.5 py-0.5 text-zinc-400 outline-none"
               >
                 <option value={25}>Last 25</option>
                 <option value={50}>Last 50</option>
@@ -307,6 +317,22 @@ export default function CommitHistory({ repoPath, onRefresh }: Props) {
           )}
         </div>
       </div>
+
+      {showRebase && commits.length > 0 && (
+        <InteractiveRebase
+          repoPath={repoPath}
+          commits={commits.slice(0, Math.min(commits.length, 20))}
+          onClose={() => setShowRebase(false)}
+          onDone={() => {
+            setShowRebase(false);
+            setCommits([]);
+            setSelected(null);
+            setDiff("");
+            api.getLog(repoPath, limit).then(setCommits).catch(() => {});
+            onRefresh?.();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -351,7 +377,8 @@ function CommitRow({
     <div
       onClick={() => !menuOpen && onSelect(commit)}
       className={`px-4 py-3 cursor-pointer border-b border-white/4 transition-colors group relative
-        ${selected ? "bg-white/10" : "hover:bg-white/5"}`}
+        ${selected ? "bg-white/10" : "hover:bg-white/5"}
+        ${menuOpen ? "z-10" : ""}`}
     >
       <div className="flex items-start gap-2">
         <div className="flex flex-col items-center shrink-0 mt-1">

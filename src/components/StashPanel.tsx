@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { StashEntry } from "../types";
 import { api } from "../api";
+import DiffViewer from "./DiffViewer";
 
 interface Props {
   repoPath: string;
@@ -12,6 +13,9 @@ export default function StashPanel({ repoPath, onRefresh }: Props) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const [previewDiff, setPreviewDiff] = useState<string>("");
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   useEffect(() => {
     loadStashes();
@@ -69,11 +73,31 @@ export default function StashPanel({ repoPath, onRefresh }: Props) {
     setError(null);
     try {
       await api.stashDrop(repoPath, index);
+      if (expandedIndex === index) { setExpandedIndex(null); setPreviewDiff(""); }
       loadStashes();
     } catch (e) {
       setError(String(e));
     } finally {
       setLoading(null);
+    }
+  }
+
+  async function togglePreview(index: number) {
+    if (expandedIndex === index) {
+      setExpandedIndex(null);
+      setPreviewDiff("");
+      return;
+    }
+    setExpandedIndex(index);
+    setPreviewDiff("");
+    setPreviewLoading(true);
+    try {
+      const diff = await api.stashDiff(repoPath, index);
+      setPreviewDiff(diff);
+    } catch {
+      setPreviewDiff("");
+    } finally {
+      setPreviewLoading(false);
     }
   }
 
@@ -136,30 +160,61 @@ export default function StashPanel({ repoPath, onRefresh }: Props) {
             {stashes.map((stash) => (
               <div
                 key={stash.index}
-                className="flex items-center gap-3 px-3 py-2.5 bg-white/5 rounded-xl border border-white/5 group"
+                className="bg-white/5 rounded-xl border border-white/5 overflow-hidden"
               >
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-zinc-300 truncate">{stash.message}</p>
-                  <p className="text-[10px] text-zinc-600 mt-0.5">stash@{"{" + stash.index + "}"}</p>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
+                {/* Header row */}
+                <div className="flex items-center gap-3 px-3 py-2.5 group">
                   <button
-                    onClick={() => handleApply(stash.index)}
-                    disabled={!!loading}
-                    className="text-[11px] px-2 py-1 text-zinc-400 hover:text-zinc-200 hover:bg-white/8 rounded transition-colors disabled:opacity-40"
-                    title="Apply (keep stash)"
+                    onClick={() => togglePreview(stash.index)}
+                    className="shrink-0 text-zinc-600 hover:text-zinc-300 transition-colors"
+                    title="Preview diff"
                   >
-                    {loading === `apply-${stash.index}` ? "…" : "Apply"}
+                    <svg
+                      className={`w-3 h-3 transition-transform ${expandedIndex === stash.index ? "rotate-90" : ""}`}
+                      viewBox="0 0 24 24" fill="currentColor"
+                    >
+                      <path d="M8 5l8 7-8 7V5z" />
+                    </svg>
                   </button>
-                  <button
-                    onClick={() => handleDrop(stash.index)}
-                    disabled={!!loading}
-                    className="text-[11px] px-2 py-1 text-zinc-600 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors disabled:opacity-40"
-                    title="Drop stash"
-                  >
-                    {loading === `drop-${stash.index}` ? "…" : "Drop"}
-                  </button>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-zinc-300 truncate">{stash.message}</p>
+                    <p className="text-[10px] text-zinc-600 mt-0.5">stash@{"{" + stash.index + "}"}</p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => handleApply(stash.index)}
+                      disabled={!!loading}
+                      className="text-[11px] px-2 py-1 text-zinc-400 hover:text-zinc-200 hover:bg-white/8 rounded transition-colors disabled:opacity-40"
+                      title="Apply (keep stash)"
+                    >
+                      {loading === `apply-${stash.index}` ? "…" : "Apply"}
+                    </button>
+                    <button
+                      onClick={() => handleDrop(stash.index)}
+                      disabled={!!loading}
+                      className="text-[11px] px-2 py-1 text-zinc-600 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors disabled:opacity-40"
+                      title="Drop stash"
+                    >
+                      {loading === `drop-${stash.index}` ? "…" : "Drop"}
+                    </button>
+                  </div>
                 </div>
+                {/* Preview diff */}
+                {expandedIndex === stash.index && (
+                  <div className="border-t border-white/8 max-h-64 overflow-auto">
+                    {previewLoading ? (
+                      <div className="p-4 space-y-1.5 animate-pulse">
+                        {[...Array(6)].map((_, i) => (
+                          <div key={i} className={`h-3 rounded ${i % 3 === 0 ? "bg-green-900/30 w-4/5" : i % 3 === 1 ? "bg-red-900/25 w-3/5" : "bg-zinc-800/60 w-full"}`} />
+                        ))}
+                      </div>
+                    ) : previewDiff ? (
+                      <DiffViewer diff={previewDiff} />
+                    ) : (
+                      <p className="p-4 text-xs text-zinc-600">No diff available</p>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>

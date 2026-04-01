@@ -52,3 +52,29 @@ export interface RemoteInfo {
   name: string;
   url: string;
 }
+
+export interface SubmoduleInfo {
+  path: string;
+  name: string;
+  commit: string;
+  status: "clean" | "modified" | "uninitialized" | "conflict";
+}
+
+export interface WorktreeInfo {
+  path: string;
+  branch: string;
+  commit: string;
+  is_main: boolean;
+  is_locked: boolean;
+}
+
+export interface AuthorStat {
+  name: string;
+  commits: number;
+}
+
+export interface RepoStats {
+  total_commits: number;
+  authors: AuthorStat[];
+  daily_commits: [string, number][]; // [YYYY-MM-DD, count]
+}
