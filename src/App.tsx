@@ -13,6 +13,7 @@ import { TooltipProvider } from "./components/ui/tooltip";
 import { loadSettings, saveSettings, GroveSettings } from "./lib/settings";
 import { notify } from "./lib/notify";
 import GroupPicker from "./components/GroupPicker";
+import SplashScreen from "./components/SplashScreen";
 
 const STORAGE_KEY = "grove_repos";
 
@@ -101,6 +102,14 @@ export default function App() {
   const [groupPickerPath, setGroupPickerPath] = useState<string | null>(null);
   const [groupInput, setGroupInput] = useState("");
   const [runTour, setRunTour] = useState(() => !isTourDone());
+  const [splashVisible, setSplashVisible] = useState(true);
+  const [splashMounted, setSplashMounted] = useState(true);
+
+  useEffect(() => {
+    const fadeTimer = setTimeout(() => setSplashVisible(false), 1500);
+    const unmountTimer = setTimeout(() => setSplashMounted(false), 2000);
+    return () => { clearTimeout(fadeTimer); clearTimeout(unmountTimer); };
+  }, []);
 
   // Apply theme + color mode to document root so modals/portals and shadcn dark variants work
   useEffect(() => {
@@ -452,6 +461,7 @@ export default function App() {
 
   return (
     <TooltipProvider>
+      {splashMounted && <SplashScreen visible={splashVisible} />}
       <div data-theme={settings.theme} className="flex h-screen bg-zinc-900 text-white overflow-hidden">
         {/* Titlebar drag region — enables window drag + double-click to zoom */}
         <div
@@ -468,6 +478,26 @@ export default function App() {
           {/* Header */}
           <div className="px-4 pb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="20" height="20" style={{ borderRadius: "5px", flexShrink: 0 }}>
+                <defs>
+                  <radialGradient id="sidebar-logo-bg" cx="50%" cy="35%" r="65%">
+                    <stop offset="0%" stopColor="#1E4D33" />
+                    <stop offset="100%" stopColor="#0C1F16" />
+                  </radialGradient>
+                </defs>
+                <rect width="1024" height="1024" rx="210" ry="210" fill="url(#sidebar-logo-bg)" />
+                <g stroke="white" strokeLinecap="round" fill="none">
+                  <line x1="512" y1="810" x2="512" y2="545" strokeWidth="56" />
+                  <path d="M 512 545 Q 426 418 268 268" strokeWidth="46" />
+                  <line x1="512" y1="545" x2="512" y2="220" strokeWidth="46" />
+                  <path d="M 512 545 Q 598 418 756 268" strokeWidth="46" />
+                </g>
+                <circle cx="512" cy="810" r="54" fill="white" />
+                <circle cx="512" cy="545" r="50" fill="white" />
+                <circle cx="268" cy="268" r="58" fill="#6EE7A0" />
+                <circle cx="512" cy="220" r="58" fill="#6EE7A0" />
+                <circle cx="756" cy="268" r="58" fill="#6EE7A0" />
+              </svg>
               <span className="text-base font-bold text-white tracking-tight">Grove</span>
               {refreshing && <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />}
               <span

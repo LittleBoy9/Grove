@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#1E4D33"/>
+      <stop offset="100%" stop-color="#0C1F16"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background rounded square (macOS style) -->
+  <rect width="1024" height="1024" rx="210" ry="210" fill="url(#bg)"/>
+
+  <!-- Tree / git-graph branches -->
+  <g stroke="white" stroke-linecap="round" fill="none">
+    <!-- Trunk -->
+    <line x1="512" y1="810" x2="512" y2="545" stroke-width="56"/>
+    <!-- Left branch -->
+    <path d="M 512 545 Q 426 418 268 268" stroke-width="46"/>
+    <!-- Center branch -->
+    <line x1="512" y1="545" x2="512" y2="220" stroke-width="46"/>
+    <!-- Right branch -->
+    <path d="M 512 545 Q 598 418 756 268" stroke-width="46"/>
+  </g>
+
+  <!-- Root node (bottom of trunk) -->
+  <circle cx="512" cy="810" r="54" fill="white"/>
+
+  <!-- Junction node (branch split) -->
+  <circle cx="512" cy="545" r="50" fill="white"/>
+
+  <!-- Tip nodes — mint green (leaves / commit heads) -->
+  <circle cx="268" cy="268" r="58" fill="#6EE7A0"/>
+  <circle cx="512" cy="220" r="58" fill="#6EE7A0"/>
+  <circle cx="756" cy="268" r="58" fill="#6EE7A0"/>
+</svg>
