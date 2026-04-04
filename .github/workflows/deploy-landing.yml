@@ -20,6 +20,7 @@ jobs:
         run: |
           mkdir _site
           cp landing.html _site/index.html
+          cp grove-icon.svg _site/grove-icon.svg
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
