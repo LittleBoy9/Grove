@@ -15,6 +15,7 @@ import { notify } from "./lib/notify";
 import GroupPicker from "./components/GroupPicker";
 import SplashScreen from "./components/SplashScreen";
 import DeleteRepoModal from "./components/DeleteRepoModal";
+import UpdateChecker from "./components/UpdateChecker";
 
 const STORAGE_KEY = "grove_repos";
 
@@ -663,6 +664,8 @@ export default function App() {
               </div>
             )}
           </ScrollArea>
+
+          <UpdateChecker />
 
           {/* Footer */}
           <div className="px-4 py-3 border-t border-white/8 shrink-0 flex items-center justify-between">

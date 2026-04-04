@@ -39,6 +39,12 @@
   "plugins": {
     "shell": {
       "open": true
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVCQkY4MDYwMjM1RTRDMUMKUldRY1RGNGpZSUMvNjlyUmtGRCtXanRpVG5WTFVxem1oNHZNRERpc2poQmRCOHM3bkx2cUl4bVQK",
+      "endpoints": [
+        "https://github.com/LittleBoy9/Grove/releases/latest/download/latest.json"
+      ]
     }
   }
 }

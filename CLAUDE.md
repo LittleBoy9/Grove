@@ -8,6 +8,7 @@ Git Repository Dashboard for macOS. Built with Tauri 2, React, TypeScript, shadc
 
 ```
 grove/
+├── grove-icon.svg                  # Source SVG for the app icon (regenerate icons with: npm run tauri icon icon-1024.png)
 ├── src/                            # React frontend
 │   ├── App.tsx                     # Root: sidebar, search, bulk actions, auto-refresh, keyboard nav, drag-to-reorder
 │   ├── api.ts                      # All Tauri invoke() calls in one place
@@ -29,11 +30,14 @@ grove/
 │       ├── RemotesPanel.tsx        # List, add, rename, remove remotes
 │       ├── FileHistory.tsx         # Per-file commit history modal (git log --follow)
 │       ├── GitignoreEditor.tsx     # .gitignore editor modal with quick-add pattern buttons
-│       ├── CloneRepo.tsx           # Clone dialog: URL + folder picker
+│       ├── CloneRepo.tsx           # Clone dialog: URL + folder picker, auto-adds cloned repo
 │       ├── SettingsPanel.tsx       # Settings modal: refresh interval, scan depth, defaults, notifications
 │       ├── GlobalSearch.tsx        # Cmd+K search palette across all repos
 │       ├── DiffViewer.tsx          # Syntax-colored diff with word-level highlights
 │       ├── LauncherMenu.tsx        # Editor + Terminal + Finder launch buttons
+│       ├── SplashScreen.tsx        # Launch splash: logo + name + animated dots, fades after 1.5s
+│       ├── DeleteRepoModal.tsx     # Confirm-by-name modal for permanently deleting repo folder from disk
+│       ├── UpdateChecker.tsx       # Checks GitHub releases on launch; shows update banner in sidebar footer
 │       └── ui/                     # shadcn/ui components
 ├── src-tauri/
 │   ├── src/
@@ -42,9 +46,13 @@ grove/
 │   │   ├── git.rs                  # All git operations via system git CLI
 │   │   └── launcher.rs             # Editor/terminal/Finder detection and launch
 │   ├── Cargo.toml
-│   ├── tauri.conf.json             # Window: 1280x800, titlebar overlay, macOS only
+│   ├── tauri.conf.json             # Window: 1280x800, titlebar overlay, macOS only; updater endpoint + pubkey
 │   └── capabilities/
 │       └── default.json            # Tauri v2 permissions
+├── .github/
+│   └── workflows/
+│       ├── deploy-landing.yml      # Landing page deploy
+│       └── release.yml             # Build + sign + publish GitHub release on git tag push
 ├── vite.config.ts                  # Vite + Tailwind v4 plugin + @ alias
 └── tsconfig.json                   # Path alias: @/* → src/*
 ```
@@ -62,6 +70,7 @@ grove/
 | Icons | react-icons (`react-icons/vsc`, `react-icons/si`) |
 | Git ops | System `git` CLI via `std::process::Command` |
 | Persistence | `localStorage` (repo paths, settings, order, selected repo, active tab per repo) |
+| Auto-update | `tauri-plugin-updater` + `@tauri-apps/plugin-updater` via GitHub Releases |
 
 ---
 
@@ -84,10 +93,16 @@ source "$HOME/.cargo/env"
 
 ## Implemented Features
 
+### App Shell
+- **Splash screen** — logo + "Grove" + animated dots on launch, fades out after 1.5s
+- **Grove logo** — displayed in sidebar header next to "Grove" text; source SVG at `grove-icon.svg`
+- **Auto-updater** — checks GitHub Releases 3s after launch; shows subtle green banner in sidebar footer with download progress and restart button
+
 ### Sidebar
 - Add repos: pick a folder (auto-detects if git repo or scans up to N levels deep, controlled by settings)
 - **Clone repo** — clone icon opens dialog: URL input + folder picker, auto-adds cloned repo
 - Remove repo (hover card → × button)
+- **Delete repo from disk** — hover card → trash icon → confirm-by-name modal (GitHub-style) → permanently deletes local folder; remote unaffected
 - Repos sorted dirty-first by default; drag to set custom order (persisted)
 - **Search** — filter repos by name (appears when > 3 repos)
 - **Fetch all** — fetch every repo at once (appears when > 1 repos)
@@ -99,12 +114,13 @@ source "$HOME/.cargo/env"
 - **Settings** — refresh interval, scan depth (2–6), default editor/terminal, notifications toggle
 
 ### Repo Card (sidebar)
-- Repo name, active branch, dirty/clean dot
+- Repo name, active branch (truncates with ellipsis), dirty/clean dot
 - Ahead/behind counts (↑↓)
 - Staged / modified / untracked badges
 - Last commit: short hash + message + time ago
 - Conflict indicator (red !)
 - Drag handle for custom order
+- Hover → trash icon (delete from disk) + × (remove from Grove) + group tag button
 
 ### Repo Detail — Changes tab
 - **Staged files** list with checkboxes → Unstage selected
@@ -206,6 +222,9 @@ Five tabs: Changes (default), History, Stash, Tags, Remotes. Tabs are rendered i
 **Auto-refresh**
 Configurable via Settings: Off, 5s, 10s (default), 30s, 60s. When Off, only manual refresh works.
 
+**Updater**
+Uses `tauri-plugin-updater`. On launch (after 3s delay), `UpdateChecker` calls `check()` against the GitHub Releases endpoint. If an update is available, a green banner appears above the sidebar footer. User clicks "Update" → progress bar → "Restart" button. The endpoint and signing pubkey are configured in `tauri.conf.json` under `plugins.updater`.
+
 ---
 
 ## Tauri Commands Reference
@@ -259,6 +278,7 @@ Configurable via Settings: Off, 5s, 10s (default), 30s, 60s. When Off, only manu
 | `resolve_conflict_theirs` | `git checkout --theirs -- <file>` + `git add` |
 | `read_gitignore` | Read `.gitignore` content (empty string if missing) |
 | `write_gitignore` | Write `.gitignore` content |
+| `delete_repo_folder` | `fs::remove_dir_all` — permanently deletes repo folder from disk |
 | `send_notification` | Send macOS native notification |
 | `pick_folder` | Native macOS folder picker dialog |
 | `detect_apps` | Detect installed editors + terminals |
@@ -325,12 +345,48 @@ react-icons used where brand icons exist:
 
 Custom SVGs for: Cursor, Zed, Ghostty, Kitty, Antigravity (not in react-icons).
 
+**App icon:** Source is `grove-icon.svg` (dark green gradient background, white git-branch tree, mint green tip nodes). To regenerate all icon sizes:
+```bash
+rsvg-convert -w 1024 -h 1024 grove-icon.svg -o icon-1024.png
+npm run tauri icon icon-1024.png
+rm icon-1024.png
+```
+
 ---
 
 ## Platform
 
 macOS only (by design). Window uses native titlebar overlay (`titleBarStyle: Overlay`).
 UI accounts for titlebar height with `padding-top: env(titlebar-area-height, 28px)`.
+
+---
+
+## Releasing Updates
+
+Updates are distributed via **GitHub Releases + Tauri's built-in updater**.
+
+### One-time setup
+1. Generate a signing keypair:
+   ```bash
+   npm run tauri signer generate -- -w ~/.tauri/grove.key
+   ```
+2. Copy the printed **public key** into `src-tauri/tauri.conf.json` → `plugins.updater.pubkey`
+3. Add two **Repository secrets** on GitHub (`Settings → Secrets → Actions`):
+   - `TAURI_SIGNING_PRIVATE_KEY` — contents of `~/.tauri/grove.key`
+   - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — password chosen above
+
+### Publishing a release
+```bash
+# 1. Bump version in both files:
+#    src-tauri/Cargo.toml      → version = "x.y.z"
+#    src-tauri/tauri.conf.json → "version": "x.y.z"
+
+# 2. Push a tag — this triggers the release workflow
+git tag vX.Y.Z
+git push origin vX.Y.Z
+```
+
+GitHub Actions (`.github/workflows/release.yml`) builds a universal macOS `.dmg`, signs it, generates `latest.json`, and creates a **draft release**. Review and publish the draft — Grove users get the in-app update banner automatically.
 
 ---
 
@@ -350,5 +406,4 @@ UI accounts for titlebar height with `padding-top: env(titlebar-area-height, 28p
 |---|---|
 | **Light mode** | Currently hardcoded dark. Would require adding `dark:` Tailwind variants throughout. |
 | **Submodule support** | Detect and show submodules in sidebar. |
-| **Branch comparison** | Diff between any two branches. |
 | **gitignore editor enhancements** | Syntax highlighting, comment toggling. |
