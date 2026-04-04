@@ -14,6 +14,7 @@ import { loadSettings, saveSettings, GroveSettings } from "./lib/settings";
 import { notify } from "./lib/notify";
 import GroupPicker from "./components/GroupPicker";
 import SplashScreen from "./components/SplashScreen";
+import DeleteRepoModal from "./components/DeleteRepoModal";
 
 const STORAGE_KEY = "grove_repos";
 
@@ -104,6 +105,7 @@ export default function App() {
   const [runTour, setRunTour] = useState(() => !isTourDone());
   const [splashVisible, setSplashVisible] = useState(true);
   const [splashMounted, setSplashMounted] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   useEffect(() => {
     const fadeTimer = setTimeout(() => setSplashVisible(false), 1500);
@@ -447,6 +449,7 @@ export default function App() {
         onClick={() => setSelectedPath(path)}
         onRemove={(e) => { e.stopPropagation(); handleRemoveRepo(path); }}
         onSetGroup={() => { setGroupPickerPath(path); setGroupInput(groups[path] ?? ""); }}
+        onDeleteFromDisk={() => setDeleteTarget(path)}
         groupName={groups[path]}
         isFavorite={favorites.has(path)}
         onToggleFavorite={() => handleToggleFavorite(path)}
@@ -741,6 +744,24 @@ export default function App() {
       )}
 
       <TourGuide run={runTour} onFinish={() => setRunTour(false)} />
+
+      {deleteTarget && (() => {
+        const status = statuses.get(deleteTarget);
+        const name = status?.name ?? deleteTarget.split("/").pop() ?? deleteTarget;
+        return (
+          <DeleteRepoModal
+            repoName={name}
+            repoPath={deleteTarget}
+            onCancel={() => setDeleteTarget(null)}
+            onConfirm={async () => {
+              await api.deleteRepoFolder(deleteTarget);
+              handleRemoveRepo(deleteTarget);
+              if (selectedPath === deleteTarget) setSelectedPath(null);
+              setDeleteTarget(null);
+            }}
+          />
+        );
+      })()}
     </TooltipProvider>
   );
 }

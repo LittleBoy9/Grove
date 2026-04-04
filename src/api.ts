@@ -173,6 +173,10 @@ export const api = {
   getBranchTimeline: (repoPath: string): Promise<BranchOrigin[]> =>
     invoke("get_branch_timeline", { repoPath }),
 
+  // Delete repo folder from disk
+  deleteRepoFolder: (path: string): Promise<void> =>
+    invoke("delete_repo_folder", { path }),
+
   // Search log
   searchLog: (repoPath: string, query: string, author: string, after: string, before: string, limit: number): Promise<CommitInfo[]> =>
     invoke("search_log", { repoPath, query, author, after, before, limit }),

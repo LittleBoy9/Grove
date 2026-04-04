@@ -393,6 +393,13 @@ async fn get_branch_timeline(repo_path: String) -> Result<Vec<BranchOrigin>, Str
     git::get_branch_timeline(&repo_path)
 }
 
+// --- Delete repo folder ---
+
+#[tauri::command]
+async fn delete_repo_folder(path: String) -> Result<(), String> {
+    std::fs::remove_dir_all(&path).map_err(|e| e.to_string())
+}
+
 // --- Search log ---
 
 #[tauri::command]
@@ -484,6 +491,7 @@ pub fn run() {
             get_repo_stats,
             get_branch_timeline,
             search_log,
+            delete_repo_folder,
         ])
         .run(tauri::generate_context!())
         .expect("error while running grove");
