@@ -10,7 +10,6 @@ export interface GroveSettings {
   notifications: boolean;
   aiProvider: AIProvider;
   aiModel: string;
-  aiKey: string;
   theme: string;
   colorMode: ColorMode;
 }
@@ -23,7 +22,6 @@ const DEFAULTS: GroveSettings = {
   notifications: true,
   aiProvider: "",
   aiModel: "",
-  aiKey: "",
   theme: "grove",
   colorMode: "dark",
 };
@@ -33,7 +31,14 @@ const KEY = "grove_settings";
 export function loadSettings(): GroveSettings {
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? { ...DEFAULTS, ...JSON.parse(raw) } : { ...DEFAULTS };
+    if (!raw) return { ...DEFAULTS };
+    const parsed = JSON.parse(raw) as Partial<GroveSettings> & { aiKey?: string };
+    // Migration: if legacy aiKey exists in localStorage, strip it (it's moving to Keychain)
+    if ("aiKey" in parsed) {
+      delete parsed.aiKey;
+      localStorage.setItem(KEY, JSON.stringify(parsed));
+    }
+    return { ...DEFAULTS, ...parsed };
   } catch {
     return { ...DEFAULTS };
   }

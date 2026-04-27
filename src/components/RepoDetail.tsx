@@ -199,7 +199,7 @@ export default function RepoDetail({ repo, onRefresh }: Props) {
   async function handleGenerateCommitMessage() {
     if (repo.staged.length === 0) return;
     const s = loadSettings();
-    if (!s.aiProvider || !s.aiKey || !s.aiModel) {
+    if (!s.aiProvider || !s.aiModel) {
       setAiError("__unconfigured__");
       setTimeout(() => setAiError(null), 4000);
       return;

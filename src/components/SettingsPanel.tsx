@@ -59,11 +59,27 @@ export default function SettingsPanel({ settings, onSave, onClose }: Props) {
   const [draft, setDraft] = useState<GroveSettings>(settings);
   const [apps, setApps] = useState<AppEntry[]>([]);
   const [showKey, setShowKey] = useState(false);
+  const [aiKey, setAiKey] = useState("");
+  const [aiKeyLoaded, setAiKeyLoaded] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     api.detectApps().then(setApps).catch(() => {});
   }, []);
+
+  // Load the stored key from the Keychain whenever the provider changes
+  useEffect(() => {
+    if (!draft.aiProvider) {
+      setAiKey("");
+      setAiKeyLoaded(true);
+      return;
+    }
+    setAiKeyLoaded(false);
+    api.getAiKey(draft.aiProvider)
+      .then((k) => setAiKey(k ?? ""))
+      .catch(() => setAiKey(""))
+      .finally(() => setAiKeyLoaded(true));
+  }, [draft.aiProvider]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -73,8 +89,17 @@ export default function SettingsPanel({ settings, onSave, onClose }: Props) {
     return () => document.removeEventListener("mousedown", handler);
   }, [onClose]);
 
-  function handleSave() {
+  async function handleSave() {
     saveSettings(draft);
+    // Persist or clear the key in the Keychain
+    try {
+      if (draft.aiProvider) {
+        if (aiKey) await api.setAiKey(draft.aiProvider, aiKey);
+        else await api.deleteAiKey(draft.aiProvider);
+      }
+    } catch (e) {
+      console.error("Failed to save AI key:", e);
+    }
     onSave(draft);
     onClose();
   }
@@ -284,7 +309,7 @@ export default function SettingsPanel({ settings, onSave, onClose }: Props) {
               ))}
               {draft.aiProvider && (
                 <button
-                  onClick={() => setDraft((d) => ({ ...d, aiProvider: "", aiModel: "", aiKey: "" }))}
+                  onClick={() => { setDraft((d) => ({ ...d, aiProvider: "", aiModel: "" })); setAiKey(""); }}
                   className="px-2.5 text-zinc-600 hover:text-zinc-400 border border-white/5 rounded-lg bg-white/3 transition-colors"
                   title="Clear"
                 >
@@ -331,9 +356,10 @@ export default function SettingsPanel({ settings, onSave, onClose }: Props) {
                   <div className="relative">
                     <input
                       type={showKey ? "text" : "password"}
-                      value={draft.aiKey}
-                      onChange={(e) => setDraft((d) => ({ ...d, aiKey: e.target.value }))}
-                      placeholder={draft.aiProvider === "anthropic" ? "sk-ant-…" : draft.aiProvider === "openai" ? "sk-…" : "AI…"}
+                      value={aiKey}
+                      onChange={(e) => setAiKey(e.target.value)}
+                      disabled={!aiKeyLoaded}
+                      placeholder={!aiKeyLoaded ? "Loading…" : draft.aiProvider === "anthropic" ? "sk-ant-…" : draft.aiProvider === "openai" ? "sk-…" : "AI…"}
                       className="w-full bg-white/3 border border-white/5 rounded-lg px-3 py-2 pr-9 text-xs text-zinc-200 placeholder:text-zinc-700 outline-none focus:border-white/15 font-mono transition-colors"
                     />
                     <button

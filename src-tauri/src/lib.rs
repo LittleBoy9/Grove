@@ -397,7 +397,77 @@ async fn get_branch_timeline(repo_path: String) -> Result<Vec<BranchOrigin>, Str
 
 #[tauri::command]
 async fn delete_repo_folder(path: String) -> Result<(), String> {
-    std::fs::remove_dir_all(&path).map_err(|e| e.to_string())
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return Err("Path is empty".into());
+    }
+
+    let p = std::path::Path::new(trimmed);
+
+    if !p.is_absolute() {
+        return Err("Path must be absolute".into());
+    }
+
+    // Resolve to a canonical path so we compare against the real thing
+    let canonical = p
+        .canonicalize()
+        .map_err(|e| format!("Invalid path: {}", e))?;
+
+    // Refuse to touch filesystem root, home, or anything suspiciously shallow
+    if canonical.components().count() < 3 {
+        return Err("Refusing to delete a top-level path".into());
+    }
+    if let Some(home) = dirs_home() {
+        if canonical == home {
+            return Err("Refusing to delete the home directory".into());
+        }
+    }
+
+    // Must actually be a git repo (either a .git directory or a .git file for worktrees)
+    let git_marker = canonical.join(".git");
+    if !git_marker.exists() {
+        return Err("Path is not a git repository — refusing to delete".into());
+    }
+
+    std::fs::remove_dir_all(&canonical).map_err(|e| e.to_string())
+}
+
+fn dirs_home() -> Option<std::path::PathBuf> {
+    std::env::var_os("HOME").map(std::path::PathBuf::from)
+}
+
+// --- AI key secure storage (macOS Keychain) ---
+
+fn ai_key_service() -> String {
+    "dev.grove.ai-keys".to_string()
+}
+
+#[tauri::command]
+async fn set_ai_key(provider: String, key: String) -> Result<(), String> {
+    let entry = keyring::Entry::new(&ai_key_service(), &provider)
+        .map_err(|e| format!("Keychain error: {}", e))?;
+    entry.set_password(&key).map_err(|e| format!("Keychain error: {}", e))
+}
+
+#[tauri::command]
+async fn get_ai_key(provider: String) -> Result<Option<String>, String> {
+    let entry = keyring::Entry::new(&ai_key_service(), &provider)
+        .map_err(|e| format!("Keychain error: {}", e))?;
+    match entry.get_password() {
+        Ok(k) => Ok(Some(k)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(e) => Err(format!("Keychain error: {}", e)),
+    }
+}
+
+#[tauri::command]
+async fn delete_ai_key(provider: String) -> Result<(), String> {
+    let entry = keyring::Entry::new(&ai_key_service(), &provider)
+        .map_err(|e| format!("Keychain error: {}", e))?;
+    match entry.delete_credential() {
+        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+        Err(e) => Err(format!("Keychain error: {}", e)),
+    }
 }
 
 // --- Search log ---
@@ -494,6 +564,9 @@ pub fn run() {
             get_branch_timeline,
             search_log,
             delete_repo_folder,
+            set_ai_key,
+            get_ai_key,
+            delete_ai_key,
         ])
         .run(tauri::generate_context!())
         .expect("error while running grove");

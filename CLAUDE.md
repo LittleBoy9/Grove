@@ -407,3 +407,5 @@ GitHub Actions (`.github/workflows/release.yml`) builds a universal macOS `.dmg`
 | **Light mode** | Currently hardcoded dark. Would require adding `dark:` Tailwind variants throughout. |
 | **Submodule support** | Detect and show submodules in sidebar. |
 | **gitignore editor enhancements** | Syntax highlighting, comment toggling. |
+| **Anonymous analytics (PostHog)** | Track `app_launched` and key feature usage events with an opt-out toggle in Settings. Use PostHog (free up to 1M events/month, open source). Add only after hitting 100+ downloads — watch GitHub release download counts first (`github.com/LittleBoy9/Grove/releases`). Must include "Share anonymous usage data" toggle in Settings before shipping. |
+| **Monetization** | Keep free for v1. Revisit after 500+ active users. Options: GitHub Sponsors (donations), freemium with AI behind a paid plan ($5/mo), or one-time purchase ($9–15) on Mac App Store. |

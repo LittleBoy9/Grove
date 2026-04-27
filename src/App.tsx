@@ -16,6 +16,7 @@ import GroupPicker from "./components/GroupPicker";
 import SplashScreen from "./components/SplashScreen";
 import DeleteRepoModal from "./components/DeleteRepoModal";
 import UpdateChecker from "./components/UpdateChecker";
+import StandupModal from "./components/StandupModal";
 
 const STORAGE_KEY = "grove_repos";
 
@@ -95,6 +96,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showClone, setShowClone] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showStandup, setShowStandup] = useState(false);
   const [customOrder, setCustomOrder] = useState<string[] | null>(loadCustomOrder);
   const [dragPath, setDragPath] = useState<string | null>(null);
   const [dragOverPath, setDragOverPath] = useState<string | null>(null);
@@ -683,6 +685,15 @@ export default function App() {
                   Reset order
                 </button>
               )}
+              {settings.aiProvider && (
+                <button
+                  onClick={() => setShowStandup(true)}
+                  className="p-1 rounded-md text-zinc-600 hover:text-purple-400 hover:bg-purple-500/10 transition-colors"
+                  title="Generate standup summary"
+                >
+                  <span className="text-sm leading-none">✨</span>
+                </button>
+              )}
               <button
                 onClick={() => setRunTour(true)}
                 className="p-1 rounded-md text-zinc-600 hover:text-zinc-400 hover:bg-white/5 transition-colors"
@@ -722,6 +733,14 @@ export default function App() {
           )}
         </div>
       </div>
+
+      {showStandup && (
+        <StandupModal
+          repoPaths={repoPaths}
+          repoNames={new Map(Array.from(statuses.entries()).map(([p, s]) => [p, s.name]))}
+          onClose={() => setShowStandup(false)}
+        />
+      )}
 
       {showSettings && (
         <SettingsPanel

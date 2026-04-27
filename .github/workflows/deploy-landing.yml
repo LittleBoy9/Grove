@@ -5,6 +5,10 @@ on:
     branches: [main]
     paths:
       - landing.html
+      - grove-icon.svg
+      - profile.jpeg
+      - og-image.png
+      - .github/workflows/deploy-landing.yml
   workflow_dispatch:
 
 permissions:
@@ -22,6 +26,7 @@ jobs:
           cp landing.html _site/index.html
           cp grove-icon.svg _site/grove-icon.svg
           cp profile.jpeg _site/profile.jpeg
+          cp og-image.png _site/og-image.png
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4

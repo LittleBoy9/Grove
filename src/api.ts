@@ -177,6 +177,14 @@ export const api = {
   deleteRepoFolder: (path: string): Promise<void> =>
     invoke("delete_repo_folder", { path }),
 
+  // AI key secure storage (macOS Keychain)
+  setAiKey: (provider: string, key: string): Promise<void> =>
+    invoke("set_ai_key", { provider, key }),
+  getAiKey: (provider: string): Promise<string | null> =>
+    invoke("get_ai_key", { provider }),
+  deleteAiKey: (provider: string): Promise<void> =>
+    invoke("delete_ai_key", { provider }),
+
   // Search log
   searchLog: (repoPath: string, query: string, author: string, after: string, before: string, limit: number): Promise<CommitInfo[]> =>
     invoke("search_log", { repoPath, query, author, after, before, limit }),

@@ -5,6 +5,8 @@ import DiffViewer from "./DiffViewer";
 import GitGraph from "./GitGraph";
 import InteractiveRebase from "./InteractiveRebase";
 import { timeAgo } from "../lib/time";
+import { explainCommitDiff } from "../lib/ai";
+import { loadSettings } from "../lib/settings";
 
 type ViewMode = "list" | "graph";
 
@@ -26,6 +28,9 @@ export default function CommitHistory({ repoPath, onRefresh }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [panelWidth, setPanelWidth] = useState(320);
   const [showRebase, setShowRebase] = useState(false);
+  const [explanation, setExplanation] = useState("");
+  const [loadingExplanation, setLoadingExplanation] = useState(false);
+  const [explanationError, setExplanationError] = useState("");
   const dragging = useRef(false);
   const dragStartX = useRef(0);
   const dragStartWidth = useRef(0);
@@ -68,6 +73,8 @@ export default function CommitHistory({ repoPath, onRefresh }: Props) {
 
   async function handleSelect(commit: CommitInfo | GraphCommitInfo) {
     setSelected(commit);
+    setExplanation("");
+    setExplanationError("");
     setLoadingDiff(true);
     try {
       const d = await api.getCommitDiff(repoPath, commit.hash);
@@ -76,6 +83,22 @@ export default function CommitHistory({ repoPath, onRefresh }: Props) {
       setDiff("");
     } finally {
       setLoadingDiff(false);
+    }
+  }
+
+  async function handleExplain() {
+    if (!selected || !diff) return;
+    setLoadingExplanation(true);
+    setExplanation("");
+    setExplanationError("");
+    try {
+      const settings = loadSettings();
+      const result = await explainCommitDiff(diff, selected.message, settings);
+      setExplanation(result);
+    } catch (e) {
+      setExplanationError(String(e));
+    } finally {
+      setLoadingExplanation(false);
     }
   }
 
@@ -285,20 +308,40 @@ export default function CommitHistory({ repoPath, onRefresh }: Props) {
           {selected ? (
             <>
               <div className="px-4 py-2.5 border-b border-white/8 shrink-0">
-                <p className="text-xs text-zinc-300 font-medium">
-                  {selected.message}
-                </p>
+                <p className="text-xs text-zinc-300 font-medium">{selected.message}</p>
                 <div className="flex items-center gap-3 mt-1">
-                  <span className="font-mono text-[11px] text-zinc-500">
-                    {selected.hash}
-                  </span>
-                  <span className="text-[11px] text-zinc-500">
-                    {selected.author}
-                  </span>
-                  <span className="text-[11px] text-zinc-600">
-                    {timeAgo(selected.timestamp)}
-                  </span>
+                  <span className="font-mono text-[11px] text-zinc-500">{selected.hash}</span>
+                  <span className="text-[11px] text-zinc-500">{selected.author}</span>
+                  <span className="text-[11px] text-zinc-600">{timeAgo(selected.timestamp)}</span>
+                  <button
+                    onClick={handleExplain}
+                    disabled={loadingExplanation || loadingDiff || !diff}
+                    className="ml-auto flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium
+                      bg-purple-500/10 border border-purple-500/20 text-purple-400
+                      hover:bg-purple-500/20 hover:border-purple-500/35 transition-colors
+                      disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                    title="Explain this commit with AI"
+                  >
+                    {loadingExplanation ? (
+                      <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path strokeLinecap="round" d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/>
+                      </svg>
+                    ) : <span>✨</span>}
+                    {loadingExplanation ? "Explaining…" : "Explain"}
+                  </button>
                 </div>
+
+                {/* Explanation panel */}
+                {(explanation || explanationError) && (
+                  <div className={`mt-2.5 p-3 rounded-lg text-[11px] leading-relaxed border
+                    ${explanationError
+                      ? "bg-red-500/8 border-red-500/15 text-red-400"
+                      : "bg-purple-500/8 border-purple-500/15 text-zinc-300"
+                    }`}
+                  >
+                    {explanationError || explanation}
+                  </div>
+                )}
               </div>
               <div className="flex-1 overflow-auto">
                 {loadingDiff ? (

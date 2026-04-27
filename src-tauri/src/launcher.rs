@@ -101,15 +101,15 @@ pub fn detect_apps() -> Vec<App> {
 
 pub fn open_in_editor(editor_id: &str, repo_path: &str) -> Result<(), String> {
     match editor_id {
-        "vscode"   => open_cli("code", repo_path),
-        "cursor"   => open_cli("cursor", repo_path),
-        "zed"      => open_cli("zed", repo_path),
-        "windsurf" => open_cli("windsurf", repo_path),
-        "xcode"    => open_cli("xed", repo_path),
-        "sublime"  => open_cli("subl", repo_path),
+        "vscode"   => open_cli_or_app("code",     "Visual Studio Code", repo_path),
+        "cursor"   => open_cli_or_app("cursor",   "Cursor",             repo_path),
+        "zed"      => open_cli_or_app("zed",      "Zed",                repo_path),
+        "windsurf" => open_cli_or_app("windsurf", "Windsurf",           repo_path),
+        "xcode"    => open_cli_or_app("xed",      "Xcode",              repo_path),
+        "sublime"  => open_cli_or_app("subl",     "Sublime Text",       repo_path),
         "idea"     => open_app("IntelliJ IDEA", repo_path),
         "webstorm" => open_app("WebStorm", repo_path),
-        "antigravity" => open_cli("agy", repo_path),
+        "antigravity" => open_cli_or_app("agy", "Antigravity", repo_path),
         _          => Err(format!("Unknown editor: {}", editor_id)),
     }
 }
@@ -149,6 +149,15 @@ fn open_cli(cmd: &str, path: &str) -> Result<(), String> {
         .spawn()
         .map(|_| ())
         .map_err(|e| format!("Failed to launch {}: {}", cmd, e))
+}
+
+fn open_cli_or_app(cmd: &str, app_name: &str, path: &str) -> Result<(), String> {
+    if cli_in_path(cmd) {
+        if open_cli(cmd, path).is_ok() {
+            return Ok(());
+        }
+    }
+    open_app(app_name, path)
 }
 
 fn open_app(app_name: &str, path: &str) -> Result<(), String> {
