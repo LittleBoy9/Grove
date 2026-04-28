@@ -168,8 +168,16 @@ fn open_app(app_name: &str, path: &str) -> Result<(), String> {
         .map_err(|e| format!("Failed to open {}: {}", app_name, e))
 }
 
+fn escape_applescript_string(s: &str) -> String {
+    // Order matters: escape backslash first, then the others
+    s.replace('\\', "\\\\")
+        .replace('"', "\\\"")
+        .replace('`', "\\`")
+        .replace('$', "\\$")
+}
+
 fn open_iterm(path: &str) -> Result<(), String> {
-    // iTerm2 needs AppleScript to open in a specific directory
+    let safe_path = escape_applescript_string(path);
     let script = format!(
         r#"tell application "iTerm2"
             activate
@@ -178,7 +186,7 @@ fn open_iterm(path: &str) -> Result<(), String> {
                 write text "cd {path} && clear"
             end tell
         end tell"#,
-        path = path.replace('"', "\\\"")
+        path = safe_path
     );
     Command::new("osascript")
         .args(["-e", &script])
