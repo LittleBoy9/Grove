@@ -5,9 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Grove — Native macOS Git Dashboard | Manage All Your Repos in One Place</title>
   <meta name="description" content="Grove is a free, open-source native macOS Git client built with Tauri and Rust. Manage multiple repositories from one workspace — stage, commit, push, branch, stash, and browse history without opening a terminal.">
-  <meta name="keywords" content="macOS git client, git GUI mac, git dashboard, multi-repo git manager, open source git app, Tauri git, git repository manager, free git client mac, github desktop alternative, sourcetree alternative, fork app alternative, git manager macOS">
-  <meta name="author" content="Grove">
+  <meta name="keywords" content="macOS git client, git GUI mac, git dashboard, multi-repo git manager, open source git app, Tauri git, git repository manager, free git client mac, github desktop alternative, sourcetree alternative, fork app alternative, git manager macOS, AI git commit message, git standup summary, native mac git app">
+  <meta name="author" content="Sounak Das">
   <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#030b08">
   <link rel="canonical" href="https://littleboy9.github.io/Grove/">
 
   <meta property="og:title" content="Grove — Native macOS Git Dashboard">
@@ -27,23 +28,34 @@
   <link rel="icon" href="grove-icon.svg" type="image/svg+xml">
 
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "Grove",
-    "operatingSystem": "macOS",
-    "applicationCategory": "DeveloperApplication",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
+  [
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Grove",
+      "operatingSystem": "macOS",
+      "applicationCategory": "DeveloperApplication",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "description": "A free, native macOS Git dashboard for managing multiple repositories from one place. Stage, commit, push, branch, stash, and browse history without opening a terminal.",
+      "url": "https://littleboy9.github.io/Grove/",
+      "downloadUrl": "https://github.com/LittleBoy9/Grove/releases",
+      "softwareVersion": "0.1.0",
+      "license": "https://opensource.org/licenses/MIT",
+      "author": { "@type": "Person", "name": "Sounak Das", "url": "https://sounakdas.in" }
     },
-    "description": "A free, native macOS Git dashboard for managing multiple repositories from one place. Stage, commit, push, branch, stash, and browse history without opening a terminal.",
-    "url": "https://littleboy9.github.io/Grove/",
-    "downloadUrl": "https://github.com/LittleBoy9/Grove/releases",
-    "softwareVersion": "0.1.0",
-    "license": "https://opensource.org/licenses/MIT"
-  }
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        { "@type": "Question", "name": "Is Grove really free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes, completely. Grove is MIT licensed and open source. No trial, no paywall, no pro tier. AI features use your own API key." } },
+        { "@type": "Question", "name": "How is Grove different from GitHub Desktop or SourceTree?", "acceptedAnswer": { "@type": "Answer", "text": "Grove is built with Tauri and Rust — truly native, ~10 MB vs 200+ MB for Electron apps. It is multi-repo first with a sidebar built around managing many repos at once, and includes built-in AI features like standup summary and commit explainer." } },
+        { "@type": "Question", "name": "Does Grove work with private repos and SSH?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Grove uses your system git binary directly, so SSH keys, .gitconfig, credential helpers, and Git hooks all work automatically." } },
+        { "@type": "Question", "name": "Is my API key safe?", "acceptedAnswer": { "@type": "Answer", "text": "Your AI API key is stored in the macOS Keychain. It is never written to disk in plain text and only transmitted directly to your chosen AI provider." } },
+        { "@type": "Question", "name": "Does Grove work on Intel Macs?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. The release is a universal binary that runs natively on both Apple Silicon and Intel Macs. macOS 12 or later required." } },
+        { "@type": "Question", "name": "Will Grove get updates?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Grove has a built-in auto-updater. When a new version is released, a banner appears in the sidebar. Click Update, wait a few seconds, click Restart." } }
+      ]
+    }
+  ]
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -555,6 +567,35 @@
     .ft-links a:hover { color: var(--text); }
     .ft-copy { font-size: 0.8rem; color: rgba(90,138,110,0.45); }
 
+    /* ── FAQ ── */
+    .faq-grid { display: flex; flex-direction: column; gap: 10px; max-width: 780px; margin: 0 auto; }
+    .faq-item {
+      border: 1px solid var(--border); border-radius: var(--r-sm);
+      background: rgba(8,22,16,0.45); overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .faq-item[open] { border-color: var(--border-hi); }
+    .faq-item summary {
+      padding: 16px 20px; font-size: 0.92rem; font-weight: 600;
+      cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between;
+      letter-spacing: -0.02em;
+      transition: color 0.2s;
+    }
+    .faq-item summary::-webkit-details-marker { display: none; }
+    .faq-item summary::after {
+      content: '+'; font-size: 1.2rem; font-weight: 300;
+      color: var(--mint); flex-shrink: 0; margin-left: 16px;
+      transition: transform 0.2s;
+    }
+    .faq-item[open] summary::after { content: '−'; }
+    .faq-item summary:hover { color: var(--mint); }
+    .faq-item p {
+      padding: 0 20px 18px; font-size: 0.88rem; color: var(--muted);
+      line-height: 1.8; border-top: 1px solid var(--border);
+      padding-top: 14px;
+    }
+    .faq-item code { font-size: 0.82rem; background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 4px; color: var(--mint); }
+
     /* ── Creator ── */
     .creator-card {
       display: flex; align-items: flex-start; gap: 48px;
@@ -667,6 +708,7 @@
         <a href="#features">Features</a>
         <a href="#workflow">How it works</a>
         <a href="#shortcuts">Shortcuts</a>
+        <a href="#faq">FAQ</a>
       </div>
       <div class="nav-right">
         <a href="https://github.com/LittleBoy9/Grove" class="btn btn-ghost" target="_blank" rel="noopener">
@@ -843,8 +885,14 @@
           <div class="bi-wrap" style="background:rgba(80,212,240,0.07);border-color:rgba(80,212,240,0.12)">
             <svg viewBox="0 0 24 24" style="stroke:#50d4f0"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg>
           </div>
-          <h3>AI commit messages</h3>
-          <p>Generate conventional commit messages from your staged diff. Anthropic, OpenAI, or Gemini. Your API key stays on your machine — never leaves it.</p>
+          <h3>Built-in AI assistant</h3>
+          <p>Three AI superpowers, all offline-safe — your key never leaves your device:</p>
+          <div class="b-tags" style="margin-top:12px">
+            <span class="b-tag" style="color:#c5ffe0;border-color:rgba(80,212,240,0.2)">✦ Commit messages from diff</span>
+            <span class="b-tag" style="color:#c5ffe0;border-color:rgba(80,212,240,0.2)">✦ Daily standup across all repos</span>
+            <span class="b-tag" style="color:#c5ffe0;border-color:rgba(80,212,240,0.2)">✦ Explain any commit in plain English</span>
+            <span class="b-tag">Anthropic · OpenAI · Gemini</span>
+          </div>
         </div>
 
         <div class="bc s2 reveal d1" data-tilt>
@@ -977,6 +1025,20 @@
             <span>Syntax-colored diff viewer with word-level highlights so you see exactly what changed.</span>
           </div>
         </div>
+        <div class="pg">
+          <span class="pg-icon">🗓️</span>
+          <div>
+            <strong>AI standup summary</strong>
+            <span>One click generates a ready-to-paste standup from your commits across all repos — today, yesterday, or last 7 days. Only possible because Grove sees all your repos at once.</span>
+          </div>
+        </div>
+        <div class="pg">
+          <span class="pg-icon">💡</span>
+          <div>
+            <strong>AI commit explainer</strong>
+            <span>Select any commit in History and hit "Explain" — AI describes what changed and why in plain English. Great for onboarding or reviewing old code.</span>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -1094,6 +1156,52 @@
             <li class="meh">Updates via external installer</li>
           </ul>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="sep"></div>
+
+  <!-- FAQ -->
+  <section class="section" id="faq" style="padding:80px 0">
+    <div class="container">
+      <div class="reveal" style="text-align:center">
+        <div class="s-label" style="justify-content:center">FAQ</div>
+        <h2 class="s-title" style="max-width:16ch;margin:0 auto 48px">Common questions.</h2>
+      </div>
+      <div class="faq-grid reveal d1">
+        <details class="faq-item">
+          <summary>Is Grove really free?</summary>
+          <p>Yes, completely. Grove is MIT licensed and open source. No trial, no paywall, no "pro" tier. The AI features use your own API key from Anthropic, OpenAI, or Gemini — you pay your provider directly, if you use them at all. Core Git features have no cost whatsoever.</p>
+        </details>
+        <details class="faq-item">
+          <summary>How is Grove different from GitHub Desktop or SourceTree?</summary>
+          <p>Three things: (1) Grove is built with Tauri + Rust so it's truly native — no Electron, no bundled Chromium, ~10 MB vs 200+ MB. (2) Multi-repo first — the whole sidebar is built around managing many repos at once, not one at a time. (3) Built-in AI features (standup summary, commit messages, commit explainer) that no other free client has.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Does Grove work with private repos and SSH?</summary>
+          <p>Yes. Grove uses your system <code>git</code> binary directly — it doesn't reimplement Git internals. So your SSH keys, <code>~/.gitconfig</code>, credential helpers, and Git hooks all work exactly as they do in your terminal. If <code>git pull</code> works in your terminal, it works in Grove.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Is my API key safe?</summary>
+          <p>Your AI API key is stored in the macOS Keychain — the same place your Wi-Fi passwords and bank credentials live. It's never written to disk in plain text, never sent to Grove's servers (there are none), and only transmitted directly to your chosen AI provider (Anthropic, OpenAI, or Gemini) when you use an AI feature.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Does Grove work on Intel Macs?</summary>
+          <p>Yes. The release is a universal binary — a single <code>.dmg</code> that runs natively on both Apple Silicon (M1/M2/M3/M4) and Intel Macs. macOS 12 Monterey or later required.</p>
+        </details>
+        <details class="faq-item">
+          <summary>How does the standup summary work?</summary>
+          <p>Click the ✨ button in the sidebar footer. Grove fetches all your commits from today (or yesterday, or the last 7 days) across every repo in your workspace, sends them to your configured AI provider, and generates a concise 3-bullet standup in first person — ready to paste into Slack or your standup tool. No other Git client can do this because they only see one repo at a time.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Will Grove get updates?</summary>
+          <p>Yes — Grove has a built-in auto-updater. When a new version is released, a subtle banner appears in the sidebar. Click Update, wait a few seconds, click Restart. No manual downloads needed after your first install.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Can I use Grove without any AI features?</summary>
+          <p>Absolutely. AI is entirely optional. All core Git features — staging, committing, pushing, branching, history, stash, tags, remotes — work with zero configuration and no API key needed.</p>
+        </details>
       </div>
     </div>
   </section>
